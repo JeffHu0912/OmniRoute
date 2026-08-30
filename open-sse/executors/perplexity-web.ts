@@ -563,7 +563,7 @@ export class PerplexityWebExecutor extends BaseExecutor {
     }
 
     // Surface any rotated session-token back to the caller so the DB credential
-    // is refreshed — mirrors chatgpt-web.ts exchangeSession + onCredentialsRefreshed.
+    // is refreshed — mirrors the shared web-session refresh contract.
     if (cookieBlob) {
       await persistRotatedSessionCookie(
         cookieBlob,
@@ -580,7 +580,7 @@ export class PerplexityWebExecutor extends BaseExecutor {
 
     // Tool mode buffers the full completion (no live token streaming) and
     // converts <tool> text into real tool_calls — even when the caller asked
-    // for a streaming response — mirroring chatgpt-web's toolMode (#5240,
+    // for a streaming response — mirroring the shared tool-mode contract (#5240,
     // #5927). Without this, streaming requests (the default for agentic
     // coding clients) never emitted a tool_calls SSE delta.
     let finalResponse: Response;

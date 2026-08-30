@@ -14,7 +14,7 @@ OmniRoute integrates with providers whose edges actively fingerprint non-officia
 
 ## Legal and Ethical Notice
 
-Stealth features exist so OmniRoute can act as a compatibility layer between user-owned official accounts (Claude Code CLI, ChatGPT Desktop/Web, Antigravity, Cursor, etc.) and OmniRoute's unified API. They are **not** for evading fraud detection, sharing credentials, or violating provider Terms of Service. The maintainers expect operators to comply with the upstream ToS they signed when creating accounts.
+Stealth features exist so OmniRoute can act as a compatibility layer between user-owned official accounts (Claude Code CLI, Codex, Antigravity, Cursor, etc.) and OmniRoute's unified API. They are **not** for evading fraud detection, sharing credentials, or violating provider Terms of Service. The maintainers expect operators to comply with the upstream ToS they signed when creating accounts.
 
 ---
 
@@ -274,17 +274,17 @@ OmniRoute scrubs inbound client headers before forwarding so a request that arri
 2. Extract JA3/JA4 and the literal header order
 3. Update the relevant `CLI_FINGERPRINTS[...]` entry
 4. Bump matching `*_USER_AGENT` default in `.env.example`
-5. If TLS handshake itself changed: update `chatgptTlsClient.ts::CHATGPT_PROFILE` or wreq-js `browser:` option
-6. Run `chatgptTlsClient.test.ts` and a manual canary against the live provider
+5. If the TLS handshake itself changed, update the relevant provider wrapper or the wreq-js `browser:` option
+6. Run the provider-specific TLS tests and a manual canary against the live provider
 7. Ship in a patch release; document in `CHANGELOG.md`
 
 ---
 
 ## Tests
 
-- `open-sse/services/__tests__/chatgptTlsClient.test.ts` — proxy resolution priority, abort handling, hang recovery
+- `open-sse/services/__tests__/claudeTlsClient.test.ts` — shared TLS wrapper behavior
 - `tests/unit/anthropic-cache-fingerprint.test.ts` — fingerprint determinism
-- `tests/unit/chatgpt-web.test.ts` — end-to-end stealth path for ChatGPT
+- `tests/unit/chatgpt-web-source-retirement.test.ts` — common ChatGPT Web stealth source remains absent while Codex Web stays present
 
 ---
 

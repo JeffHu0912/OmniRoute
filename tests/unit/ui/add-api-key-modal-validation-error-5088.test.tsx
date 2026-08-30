@@ -2,7 +2,7 @@
 //
 // #5088 — When the inline credential "Check" fails, the modal showed only a bare
 // "invalid" badge and threw away the detailed reason returned by
-// /api/providers/validate. For claude-web/chatgpt-web the real cause is often an
+// /api/providers/validate. For browser-session providers the real cause is often an
 // environment error (e.g. "TLS impersonation client failed to start: EACCES …"),
 // which the backend already surfaces in `data.error` — but the UI hid it, so the
 // reporter had to dig it out via a separate Provider Test. The detailed message
