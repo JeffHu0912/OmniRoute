@@ -77,6 +77,7 @@ import {
   buildSubscriptionQuotaFallback,
   buildWeeklyQuotaFallback,
   buildSessionQuotaFallback,
+  SUBSCRIPTION_QUOTA_COOLDOWN_MS,
 } from "./quotaTextCooldowns.ts";
 import { parseDayGranularityResetMs, shouldPreserveQuotaSignals } from "./quotaResetParsing.ts";
 import { evictLockoutOverflow } from "./accountFallback/lockoutEviction.ts";
@@ -599,9 +600,7 @@ export function shouldDeferAntigravityQuotaStateToCaller(
   hasCallerOwner: boolean
 ): boolean {
   const canonicalProvider = getCanonicalLockProvider(provider);
-  return (
-    hasCallerOwner && (canonicalProvider === "antigravity" || canonicalProvider === "agy")
-  );
+  return hasCallerOwner && (canonicalProvider === "antigravity" || canonicalProvider === "agy");
 }
 
 export async function recordCoreOwnedAntigravityQuotaState({
@@ -622,15 +621,7 @@ export async function recordCoreOwnedAntigravityQuotaState({
   profileOverride?: ProviderProfile | null;
 }) {
   const profile = profileOverride ?? (await getRuntimeProviderProfile(provider));
-  const fallback = checkFallbackError(
-    status,
-    errorText,
-    0,
-    model,
-    provider,
-    headers,
-    profile
-  );
+  const fallback = checkFallbackError(status, errorText, 0, model, provider, headers, profile);
   const lockout = recordModelLockoutFailure(
     provider,
     connectionId,
@@ -646,9 +637,7 @@ export async function recordCoreOwnedAntigravityQuotaState({
           : (fallback.quotaResetHintMs ?? null),
       maxCooldownMs: profile.maxCooldownMs,
       scope: "exact",
-      exactCooldownIsUpstreamReset: retryHintBypassesMaxCooldownMs(
-        fallback.retryHintSource
-      ),
+      exactCooldownIsUpstreamReset: retryHintBypassesMaxCooldownMs(fallback.retryHintSource),
     }
   );
   return { cooldownMs: lockout.cooldownMs, failureCount: lockout.failureCount };
@@ -1560,7 +1549,7 @@ export function classifyError(
   if (status === HTTP_STATUS.UNAUTHORIZED || status === HTTP_STATUS.FORBIDDEN) {
     return RateLimitReason.AUTH_ERROR;
   }
-  if (status === HTTP_STATUS.PAYMENT_REQUIRED) {
+  if (status === HTTP_STATUS.PAYMENT_REQUIRED || status === HTTP_STATUS.PLAN_LIMIT_EXCEEDED) {
     return RateLimitReason.QUOTA_EXHAUSTED;
   }
   if (status === HTTP_STATUS.RATE_LIMITED) {
@@ -1692,6 +1681,18 @@ export function checkFallbackError(
     };
   }
 
+  const previousResponseBindingMiss =
+    structuredError?.code === "invalid_previous_response_binding" ||
+    (status === 409 && /previous_response_id does not belong/i.test(String(errorText || "")));
+  if (previousResponseBindingMiss) {
+    return {
+      shouldFallback: false,
+      cooldownMs: 0,
+      reason: "invalid_previous_response_binding",
+      skipProviderBreaker: true,
+    };
+  }
+
   const svc = serviceSupervisorCooldown(status, headers);
   if (svc) return svc;
   const rg = rot.gateFor(status, rotation?.account);
@@ -1752,10 +1753,7 @@ export function checkFallbackError(
       if (waitMs > 0) return { retryAfterMs: waitMs, provenance: "header" };
     }
 
-    const detailedJsonHint = parseDetailedRetryHintFromJsonBody(
-      errorStr,
-      MAX_PROVIDER_COOLDOWN_MS
-    );
+    const detailedJsonHint = parseDetailedRetryHintFromJsonBody(errorStr, MAX_PROVIDER_COOLDOWN_MS);
     if (detailedJsonHint) {
       return {
         retryAfterMs: detailedJsonHint.retryAfterMs,
@@ -2129,6 +2127,24 @@ export function checkFallbackError(
 
   if (status === HTTP_STATUS.NOT_ACCEPTABLE || retryableStatuses.has(status)) {
     return buildRetryableFallback(RateLimitReason.SERVER_ERROR);
+  }
+
+  // 432 -- plan limit reached (e.g. Tavily, Context7, and search upstreams)
+  if (status === HTTP_STATUS.PLAN_LIMIT_EXCEEDED) {
+    const subResult = buildSubscriptionQuotaFallback(
+      errorStr,
+      () => getUpstreamRetryHint()?.retryAfterMs ?? null,
+      parseRetryFromErrorText,
+      provider
+    );
+    if (subResult) return subResult;
+    const cooldownMs = getUpstreamRetryHint()?.retryAfterMs ?? SUBSCRIPTION_QUOTA_COOLDOWN_MS;
+    return {
+      shouldFallback: true,
+      cooldownMs,
+      baseCooldownMs: cooldownMs,
+      reason: RateLimitReason.QUOTA_EXHAUSTED,
+    };
   }
 
   // 400 — context overflow / malformed request / model access denied
