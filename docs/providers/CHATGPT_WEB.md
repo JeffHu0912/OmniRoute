@@ -24,6 +24,9 @@ invalidates their active session leases. It preserves connection history and API
 allowlists; it does not add replacement access to an allowlist. The Codex provider and
 its connections are not matched by this retirement.
 
+For ordinary `/v1/chat/completions` traffic over a ChatGPT session, use the clean-room
+`chatgpt-session` provider instead — see [CHATGPT_SESSION.md](./CHATGPT_SESSION.md).
+
 ## Prerequisites
 
 - a full Cookie header from a signed-in ChatGPT session;
