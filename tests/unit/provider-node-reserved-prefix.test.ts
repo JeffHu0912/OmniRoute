@@ -171,7 +171,12 @@ test("shared set size includes live REGISTRY and retired Designer + Felo + Qwen 
   // 1 and adds 2 distinct tombstones "qwen-web"/"qw", a net +1) on top of the
   // live REGISTRY walk, minus the 3 GPL-derived Raycast/Hailuo Web
   // ids/aliases removed from REGISTRY by #11691's migration 166.
-  assert.equal(RESERVED_PREFIX_COUNT, 400);
+  // 2026-09-02: 400 → 402 with the ChatGPT Session provider
+  // (feat/chatgpt-session-provider) — its REGISTRY entry contributes 2
+  // distinct new members: id "chatgpt-session" and alias "cgpt-session".
+  assert.equal(RESERVED_PREFIX_COUNT, 402);
+  assert.equal(RESERVED_PROVIDER_PREFIXES.has("chatgpt-session"), true);
+  assert.equal(RESERVED_PROVIDER_PREFIXES.has("cgpt-session"), true);
 });
 
 test("isReservedProviderPrefix rejects non-string input", () => {
