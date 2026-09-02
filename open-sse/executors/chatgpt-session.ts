@@ -224,11 +224,13 @@ export class ChatGptSessionExecutor extends BaseExecutor {
         messages
       );
 
+      // No `rawBody` here on purpose: the adapter reads `_rawBody` as a native Codex Responses
+      // body, so handing it the OpenAI chat-completions body failed every turn before any browser
+      // work. `buildParsedRequest` synthesizes that envelope itself.
       const parsed = buildParsedRequest({
         route,
         messages: effectiveMessages,
         stream: Boolean(input.stream) && !hasTools,
-        rawBody: input.body,
       });
 
       const provider = buildChatGptSessionProviderConfig({

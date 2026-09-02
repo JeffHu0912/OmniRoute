@@ -181,3 +181,132 @@ test("a refusal part whose refusal field is not a string is still rejected", () 
     );
   }
 });
+
+/**
+ * The synthesized `_rawBody` envelope. Without it the vendored adapter refuses every turn
+ * ("ChatGPT web requires native Codex turn_id metadata for browser-session replay") before any
+ * browser work, so these assertions guard a live-fatal defect that adapter mocking cannot see.
+ */
+function rawBody(parsed: { _rawBody?: unknown }): Record<string, unknown> {
+  const body = parsed._rawBody;
+  assert.ok(body && typeof body === "object" && !Array.isArray(body), "_rawBody must be an object");
+  return body as Record<string, unknown>;
+}
+
+function turnMetadata(parsed: { _rawBody?: unknown }): Record<string, unknown> {
+  const clientMetadata = rawBody(parsed).client_metadata;
+  assert.ok(
+    clientMetadata && typeof clientMetadata === "object" && !Array.isArray(clientMetadata),
+    "client_metadata must be an object"
+  );
+  const raw = (clientMetadata as Record<string, unknown>)["x-codex-turn-metadata"];
+  assert.equal(
+    typeof raw,
+    "string",
+    "x-codex-turn-metadata must be the JSON string the client sends"
+  );
+  const decoded: unknown = JSON.parse(raw as string);
+  assert.ok(decoded && typeof decoded === "object" && !Array.isArray(decoded));
+  return decoded as Record<string, unknown>;
+}
+
+function inputItems(parsed: { _rawBody?: unknown }): Array<Record<string, unknown>> {
+  const input = rawBody(parsed).input;
+  assert.ok(Array.isArray(input), "_rawBody.input must be an array");
+  return input.map((item) => {
+    assert.ok(item && typeof item === "object" && !Array.isArray(item));
+    return item as Record<string, unknown>;
+  });
+}
+
+function passthroughTurnId(item: Record<string, unknown>): unknown {
+  const passthrough = item.internal_chat_message_metadata_passthrough;
+  if (passthrough === undefined) return undefined;
+  assert.ok(passthrough && typeof passthrough === "object" && !Array.isArray(passthrough));
+  return (passthrough as Record<string, unknown>).turn_id;
+}
+
+test("the turn metadata is a JSON string carrying a thread id and a turn id", () => {
+  const parsed = buildParsedRequest({
+    route,
+    messages: [{ role: "user", content: "Hi" }],
+    stream: true,
+  });
+  const metadata = turnMetadata(parsed);
+  assert.equal(typeof metadata.thread_id, "string");
+  assert.equal(typeof metadata.turn_id, "string");
+  assert.match(String(metadata.thread_id), /^thread_omniroute_/);
+  assert.match(String(metadata.turn_id), /^turn_omniroute_/);
+});
+
+test("_rawBody.input mirrors the parsed messages, in order and in Responses item shape", () => {
+  const parsed = buildParsedRequest({
+    route,
+    messages: [
+      { role: "system", content: "Be terse." },
+      { role: "user", content: "one" },
+      { role: "assistant", content: "two" },
+      { role: "user", content: "three" },
+    ],
+    stream: true,
+  });
+  const items = inputItems(parsed);
+  assert.equal(items.length, parsed.context.messages.length);
+  assert.deepEqual(
+    items.map((item) => item.role),
+    ["user", "assistant", "user"]
+  );
+  assert.deepEqual(
+    items.map((item) => item.type),
+    ["message", "message", "message"]
+  );
+  assert.deepEqual(items[0].content, [{ type: "input_text", text: "one" }]);
+  assert.deepEqual(items[1].content, [{ type: "output_text", text: "two" }]);
+  assert.deepEqual(items[2].content, [{ type: "input_text", text: "three" }]);
+  // System prompts stay out of `input`; the vendored parser reads them from `instructions`.
+  assert.equal(rawBody(parsed).instructions, "Be terse.");
+  assert.equal(rawBody(parsed).model, parsed.modelId);
+});
+
+test("only the last user item carries the current-turn passthrough id", () => {
+  const parsed = buildParsedRequest({
+    route,
+    messages: [
+      { role: "user", content: "one" },
+      { role: "assistant", content: "two" },
+      { role: "user", content: "three" },
+    ],
+    stream: true,
+  });
+  const items = inputItems(parsed);
+  const turnId = turnMetadata(parsed).turn_id;
+  assert.equal(passthroughTurnId(items[0]), undefined);
+  assert.equal(passthroughTurnId(items[1]), undefined);
+  assert.equal(passthroughTurnId(items[2]), turnId);
+});
+
+test("a trailing assistant turn leaves the marker on the last USER item", () => {
+  const parsed = buildParsedRequest({
+    route,
+    messages: [
+      { role: "user", content: "one" },
+      { role: "assistant", content: "two" },
+    ],
+    stream: true,
+  });
+  const items = inputItems(parsed);
+  const turnId = turnMetadata(parsed).turn_id;
+  assert.equal(passthroughTurnId(items[0]), turnId);
+  assert.equal(passthroughTurnId(items[1]), undefined);
+});
+
+test("every request gets its own thread id and turn id", () => {
+  const first = turnMetadata(
+    buildParsedRequest({ route, messages: [{ role: "user", content: "Hi" }], stream: true })
+  );
+  const second = turnMetadata(
+    buildParsedRequest({ route, messages: [{ role: "user", content: "Hi" }], stream: true })
+  );
+  assert.notEqual(first.thread_id, second.thread_id);
+  assert.notEqual(first.turn_id, second.turn_id);
+});
