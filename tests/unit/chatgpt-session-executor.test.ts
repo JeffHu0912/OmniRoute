@@ -192,3 +192,101 @@ test("forwards the abort signal to the adapter", async () => {
   await response.text();
   assert.equal(seenSignal, controller.signal);
 });
+
+test("keeps the bridge's own status when a first-event error is not message-classifiable", async () => {
+  // A Playwright TimeoutError is classified by `name`/`status`, not by its message. Re-deriving
+  // the class from the message alone would fall through to 502 and trip the provider breaker.
+  stubRuntime([
+    {
+      type: "error",
+      message: "locator.click: Target closed",
+      status: 400,
+      code: "browser_ui_timeout",
+    } as AdapterEvent,
+  ]);
+  const result = await new ChatGptSessionExecutor().execute({
+    model: "high",
+    body: body(),
+    stream: true,
+    credentials: CREDENTIALS,
+  });
+  const response = "response" in result ? result.response : result;
+  assert.equal(response.status, 400);
+  const json = (await response.json()) as { error: { code: string } };
+  assert.equal(json.error.code, "browser_ui_timeout");
+});
+
+test(
+  "closes the event queue even when persisting state and its logger both throw",
+  { timeout: 5000 },
+  async () => {
+    stubRuntime([{ type: "text_delta", text: "Hello" }, { type: "done" }], {
+      readStorageState: () => {
+        throw new Error("storage state is unreadable");
+      },
+    });
+    const result = await new ChatGptSessionExecutor().execute({
+      model: "high",
+      body: body(),
+      stream: false,
+      credentials: CREDENTIALS,
+      log: {
+        warn: () => {
+          throw new Error("logger exploded");
+        },
+      },
+    });
+    const response = "response" in result ? result.response : result;
+    assert.ok(response instanceof Response);
+    assert.equal(typeof response.status, "number");
+  }
+);
+
+test("replays emulated tool calls as an SSE stream when the client asked to stream", async () => {
+  stubRuntime([
+    { type: "text_delta", text: '<tool>{"name": "get_time", "arguments": {}}</tool>' },
+    { type: "done" },
+  ]);
+  const result = await new ChatGptSessionExecutor().execute({
+    model: "high",
+    body: body({
+      tools: [
+        {
+          type: "function",
+          function: { name: "get_time", description: "time", parameters: { type: "object" } },
+        },
+      ],
+    }),
+    stream: true,
+    credentials: CREDENTIALS,
+  });
+  const response = "response" in result ? result.response : result;
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("Content-Type") ?? "", /text\/event-stream/);
+  const text = await response.text();
+  assert.match(text, /"tool_calls"/);
+  assert.match(text, /get_time/);
+  assert.match(text, /"finish_reason":"tool_calls"/);
+});
+
+test("skips the tool-mode replay when the buffered turn did not return 200", async () => {
+  stubRuntime([{ type: "error", message: "ChatGPT page is not authenticated" }]);
+  const result = await new ChatGptSessionExecutor().execute({
+    model: "high",
+    body: body({
+      tools: [
+        {
+          type: "function",
+          function: { name: "get_time", description: "time", parameters: { type: "object" } },
+        },
+      ],
+    }),
+    stream: false,
+    credentials: CREDENTIALS,
+  });
+  const response = "response" in result ? result.response : result;
+  assert.equal(response.status, 401);
+  const json = (await response.json()) as Record<string, unknown>;
+  assert.ok(json.error, "expected the error body to survive the tool-mode path");
+  assert.equal(json.choices, undefined);
+});

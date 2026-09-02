@@ -56,6 +56,21 @@ function configuredString(data: Record<string, unknown>, ...keys: string[]): str
   return undefined;
 }
 
+/**
+ * A caller-supplied logger is foreign code and may throw. It never gets to decide whether the
+ * request is answered, so every warn goes through here.
+ */
+function warn(log: ExecuteInput["log"], message: unknown): void {
+  try {
+    log?.warn?.(
+      "CHATGPT_SESSION",
+      sanitizeErrorMessage(message instanceof Error ? message.message : message)
+    );
+  } catch {
+    // A broken logger must not fail the turn.
+  }
+}
+
 function wrapped(response: Response, body: unknown): ExecutorExecuteResult {
   return {
     response,
@@ -242,12 +257,7 @@ export class ChatGptSessionExecutor extends BaseExecutor {
             }),
           });
         } catch (refreshError) {
-          input.log?.warn?.(
-            "CHATGPT_SESSION",
-            sanitizeErrorMessage(
-              refreshError instanceof Error ? refreshError.message : refreshError
-            )
-          );
+          warn(input.log, refreshError);
         }
       };
 
@@ -263,8 +273,15 @@ export class ChatGptSessionExecutor extends BaseExecutor {
             code: classified.code,
           });
         } finally {
-          await persistRotatedState();
-          events.close();
+          // The close MUST happen even if persisting (or a caller-supplied logger inside its
+          // catch) throws: without it `events.collect()` and the streaming consumer both wait
+          // on a queue that is never closed, and the streaming path — started as `void run()` —
+          // turns the throw into an unhandled rejection on top of the hang.
+          try {
+            await persistRotatedState();
+          } finally {
+            events.close();
+          }
         }
       };
 
@@ -296,18 +313,13 @@ export class ChatGptSessionExecutor extends BaseExecutor {
       void run();
       const opened = await openChatGptSessionStream(events, meta);
       if (opened.kind === "error") {
-        // Re-classify from the raw message so a message-derived hint (e.g. the
-        // connection-cooldown hint on a browser failure) is not lost.
-        const classified = classifyChatGptSessionError(new Error(opened.message));
-        return wrapped(
-          errorResponse(
-            classified.status,
-            opened.message,
-            classified.code,
-            classified.fallbackHint
-          ),
-          input.body
-        );
+        // `opened.status`/`opened.code` are authoritative: the bridge classified the real
+        // adapter event, which carries its own `status`/`code` and its own `name` (a Playwright
+        // TimeoutError is classified by name, and its message alone would fall through to a
+        // breaker-tripping 502). `ChatGptSessionStreamOpen` has no `fallbackHint` field, so the
+        // message is re-examined for that one value and nothing else.
+        const hint = classifyChatGptSessionError(new Error(opened.message)).fallbackHint;
+        return wrapped(errorResponse(opened.status, opened.message, opened.code, hint), input.body);
       }
       return wrapped(
         new Response(opened.stream, { status: 200, headers: SSE_HEADERS }),
@@ -315,10 +327,7 @@ export class ChatGptSessionExecutor extends BaseExecutor {
       );
     } catch (error) {
       const classified = classifyChatGptSessionError(error);
-      input.log?.warn?.(
-        "CHATGPT_SESSION",
-        sanitizeErrorMessage(error instanceof Error ? error.message : error)
-      );
+      warn(input.log, error);
       return wrapped(
         errorResponse(
           classified.status,
