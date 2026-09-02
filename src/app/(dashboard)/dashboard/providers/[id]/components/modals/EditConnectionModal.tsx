@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button, Badge, Input, Modal, Toggle, Select } from "@/shared/components";
-import { CHATGPT_WEB_CODEX_CONNECTOR_NAME } from "@/shared/constants/chatgptWebCodex";
+import {
+  CHATGPT_WEB_CODEX_CONNECTOR_NAME,
+  usesChatGptBrowserSessionCredentials,
+} from "@/shared/constants/chatgptWebCodex";
 import {
   isOpenAICompatibleProvider,
   isAnthropicCompatibleProvider,
@@ -230,6 +233,11 @@ export default function EditConnectionModal({
   const isLocalSelfHostedProvider = !!localProviderMetadata;
   const isGooglePse = provider === "google-pse-search";
   const isChatGptWebCodex = provider === "chatgpt-web-codex";
+  // The credential ENVELOPE is decided by the shared browser-session lifecycle predicate,
+  // not by the codex id: `/api/providers/[id]` routes every provider this predicate accepts
+  // into `decodeChatGptWebCodexSecrets` + `finalizeValidatedChatGptWebCodexSecrets`, both of
+  // which expect the JSON envelope. Client and server must read the same predicate.
+  const usesBrowserSessionCredential = usesChatGptBrowserSessionCredentials(provider);
   const isAwsPolly = provider === "aws-polly";
   const isM365TierCapable = isM365TierCapableProvider(provider);
   const webSessionCredential = getWebSessionCredentialRequirement(provider);
@@ -648,7 +656,7 @@ export default function EditConnectionModal({
           }
         }
         if (isValid) {
-          updates.apiKey = isChatGptWebCodex
+          updates.apiKey = usesBrowserSessionCredential
             ? JSON.stringify({
                 version: 1,
                 cookie: formData.apiKey.trim().replace(/^cookie\s*:\s*/i, ""),

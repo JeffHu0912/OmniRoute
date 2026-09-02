@@ -34,6 +34,7 @@ import {
   decodeChatGptWebCodexSecrets,
   encodeChatGptWebCodexSecrets,
 } from "@omniroute/open-sse/services/chatgptWebCodexAdmin.ts";
+import { sanitizeErrorMessage } from "@omniroute/open-sse/utils/error.ts";
 import { rejectRetiredCommonChatGptWebProvider } from "@/lib/providers/chatgptWebRetirementResponse";
 import { usesChatGptBrowserSessionCredentials } from "@/shared/constants/chatgptWebCodex";
 
@@ -192,10 +193,11 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         } catch (error) {
           return NextResponse.json(
             {
-              error:
+              error: sanitizeErrorMessage(
                 error instanceof Error
                   ? error.message
-                  : "Die ChatGPT-Browserprüfung konnte nicht abgeschlossen werden.",
+                  : "The browser session verification could not be completed."
+              ),
             },
             { status: 400 }
           );

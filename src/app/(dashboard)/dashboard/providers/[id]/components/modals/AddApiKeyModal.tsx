@@ -2,7 +2,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Button, Badge, Input, Modal, Toggle, TALL_MODAL_PROPS } from "@/shared/components";
-import { CHATGPT_WEB_CODEX_CONNECTOR_NAME } from "@/shared/constants/chatgptWebCodex";
+import {
+  CHATGPT_WEB_CODEX_CONNECTOR_NAME,
+  usesChatGptBrowserSessionCredentials,
+} from "@/shared/constants/chatgptWebCodex";
 import {
   providerAllowsOptionalApiKey,
   supportsBulkApiKey,
@@ -97,6 +100,12 @@ export default function AddApiKeyModal({
   const isLocalSelfHostedProvider = !!localProviderMetadata;
   const isGooglePse = provider === "google-pse-search";
   const isChatGptWebCodex = provider === "chatgpt-web-codex";
+  // The credential ENVELOPE is decided by the shared browser-session lifecycle predicate,
+  // not by the codex id: `/api/providers` routes every provider this predicate accepts into
+  // `finalizeValidatedChatGptWebCodexSecrets`, which starts with `JSON.parse`. Posting a raw
+  // cookie for one of them fails the save with a JSON parse error, so client and server must
+  // read the same predicate.
+  const usesBrowserSessionCredential = usesChatGptBrowserSessionCredentials(provider);
   const isAwsPolly = provider === "aws-polly";
   const webSessionCredential = getWebSessionCredentialRequirement(provider);
   const isNoAuthWebSessionCredential = webSessionCredential?.kind === "none";
@@ -402,11 +411,12 @@ export default function AddApiKeyModal({
         ...(validatedProviderSpecificData || {}),
       };
 
-      const encodedCredential = isChatGptWebCodex
+      const encodedCredential = usesBrowserSessionCredential
         ? JSON.stringify({
             version: 1,
             cookie: credentialInput.trim().replace(/^cookie\s*:\s*/i, ""),
-            runtimeKey: formData.runtimeKey.trim(),
+            // Only chatgpt-web-codex ever has a runtime key; omit the field entirely otherwise.
+            ...(formData.runtimeKey.trim() ? { runtimeKey: formData.runtimeKey.trim() } : {}),
           })
         : credentialInput.trim();
       const payload = {

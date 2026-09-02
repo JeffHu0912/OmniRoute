@@ -48,6 +48,7 @@ import {
   getModelSyncInternalBaseUrl,
 } from "@/shared/services/modelSyncScheduler";
 import { finalizeValidatedChatGptWebCodexSecrets } from "@omniroute/open-sse/services/chatgptWebCodexAdmin.ts";
+import { sanitizeErrorMessage } from "@omniroute/open-sse/utils/error.ts";
 import { usesChatGptBrowserSessionCredentials } from "@/shared/constants/chatgptWebCodex";
 import { isAutoFetchModelsEnabled } from "@/lib/providerModels/modelDiscovery";
 import { testSingleConnection } from "./[id]/test/route";
@@ -212,10 +213,11 @@ export async function POST(request: Request) {
       } catch (error) {
         return NextResponse.json(
           {
-            error:
+            error: sanitizeErrorMessage(
               error instanceof Error
                 ? error.message
-                : "Die ChatGPT-Browserprüfung konnte nicht abgeschlossen werden.",
+                : "The browser session verification could not be completed."
+            ),
           },
           { status: 400 }
         );
