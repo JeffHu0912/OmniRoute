@@ -60,6 +60,14 @@ export function classifyChatGptSessionError(error: unknown): ChatGptSessionError
 
   const like = asErrorLike(error);
 
+  // The error's own constructor name is a stronger signal than substring matching on its
+  // message: a Playwright TimeoutError is always a terminal DOM/selector timeout, even when
+  // its message happens to name a login-related selector (which would otherwise look like an
+  // expired session to the message-pattern checks below).
+  if (like.name === "TimeoutError") {
+    return { status: 400, code: "browser_ui_timeout" };
+  }
+
   if (BROWSER_UNAVAILABLE.test(like.message)) {
     return { status: 503, code: "browser_unavailable", fallbackHint: "connection_cooldown" };
   }
@@ -75,7 +83,7 @@ export function classifyChatGptSessionError(error: unknown): ChatGptSessionError
   if (ROUTE_UNAVAILABLE.test(like.message)) {
     return { status: 400, code: "route_unavailable" };
   }
-  if (like.name === "TimeoutError" || UI_TIMEOUT.test(like.message)) {
+  if (UI_TIMEOUT.test(like.message)) {
     return { status: 400, code: "browser_ui_timeout" };
   }
   if (typeof like.status === "number" && like.status >= 400) {

@@ -57,6 +57,16 @@ test("a DOM timeout is a terminal 400, not a retryable 5xx", () => {
   assert.equal(result.code, "browser_ui_timeout");
 });
 
+test("a TimeoutError naming a login selector is a UI timeout, not an expired session", () => {
+  const timeout = new Error(
+    'page.waitForSelector: Timeout 15000ms exceeded ... selector "button:has-text(\\"Log in\\")"'
+  );
+  timeout.name = "TimeoutError";
+  const result = classifyChatGptSessionError(timeout);
+  assert.equal(result.status, 400);
+  assert.equal(result.code, "browser_ui_timeout");
+});
+
 test("input errors map to their own 400 codes", () => {
   const result = classifyChatGptSessionError(
     new ChatGptSessionInputError("vision_unsupported", "no images")
@@ -65,9 +75,20 @@ test("input errors map to their own 400 codes", () => {
   assert.equal(result.code, "vision_unsupported");
 });
 
-test("an explicit upstream status wins over message matching", () => {
+test("an explicit upstream status is used when no message pattern matches", () => {
   const result = classifyChatGptSessionError({ message: "anything", status: 502, code: "x" });
   assert.equal(result.status, 502);
+});
+
+// Message-pattern matching intentionally runs before the explicit-status branch, so a
+// recognised message wins even when the error also carries an explicit upstream status.
+test("a matching message wins over an explicit upstream status", () => {
+  const result = classifyChatGptSessionError({
+    message: "ChatGPT reported a usage limit",
+    status: 500,
+  });
+  assert.equal(result.status, 429);
+  assert.equal(result.code, "rate_limited");
 });
 
 test("an unrecognised failure is a retryable 502", () => {
