@@ -35,6 +35,7 @@ import {
   encodeChatGptWebCodexSecrets,
 } from "@omniroute/open-sse/services/chatgptWebCodexAdmin.ts";
 import { rejectRetiredCommonChatGptWebProvider } from "@/lib/providers/chatgptWebRetirementResponse";
+import { usesChatGptBrowserSessionCredentials } from "@/shared/constants/chatgptWebCodex";
 
 function normalizeCodexLimitPolicy(
   incoming: unknown,
@@ -172,7 +173,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     if (defaultModel !== undefined) updateData.defaultModel = defaultModel;
     if (isActive !== undefined) updateData.isActive = isActive;
     if (apiKey && canUpdateProviderApiKey(existing.authType, existing.provider)) {
-      if (existing.provider === "chatgpt-web-codex") {
+      if (usesChatGptBrowserSessionCredentials(existing.provider)) {
         const validationId =
           incomingPsd && typeof incomingPsd.validationId === "string"
             ? incomingPsd.validationId
@@ -215,7 +216,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     // the override (connection follows the global default); 0-1440 = explicit
     // per-connection minutes (0 opts this connection out of the sweep).
     if (healthCheckInterval === null) updateData.healthCheckInterval = null;
-    else if (healthCheckInterval !== undefined) updateData.healthCheckInterval = healthCheckInterval;
+    else if (healthCheckInterval !== undefined)
+      updateData.healthCheckInterval = healthCheckInterval;
     if (group !== undefined) updateData.group = group;
     if (maxConcurrent !== undefined) updateData.maxConcurrent = maxConcurrent;
     if (incomingWindowThresholds !== undefined) {

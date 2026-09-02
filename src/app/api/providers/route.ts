@@ -48,6 +48,7 @@ import {
   getModelSyncInternalBaseUrl,
 } from "@/shared/services/modelSyncScheduler";
 import { finalizeValidatedChatGptWebCodexSecrets } from "@omniroute/open-sse/services/chatgptWebCodexAdmin.ts";
+import { usesChatGptBrowserSessionCredentials } from "@/shared/constants/chatgptWebCodex";
 import { isAutoFetchModelsEnabled } from "@/lib/providerModels/modelDiscovery";
 import { testSingleConnection } from "./[id]/test/route";
 import { rejectRetiredCommonChatGptWebProvider } from "@/lib/providers/chatgptWebRetirementResponse";
@@ -198,7 +199,7 @@ export async function POST(request: Request) {
       providerSpecificData = normalizeQoderPatProviderData(providerSpecificData || {});
     }
 
-    if (provider === "chatgpt-web-codex") {
+    if (usesChatGptBrowserSessionCredentials(provider)) {
       const validationId =
         providerSpecificData && typeof providerSpecificData.validationId === "string"
           ? providerSpecificData.validationId
@@ -324,11 +325,16 @@ export async function POST(request: Request) {
         })
           .then((syncRes) => {
             if (!syncRes.ok) {
-              console.log(`[providers] Auto-sync failed for ${newConnection.id}: ${syncRes.status}`);
+              console.log(
+                `[providers] Auto-sync failed for ${newConnection.id}: ${syncRes.status}`
+              );
             }
           })
           .catch((err) => {
-            console.log(`[providers] Auto-sync error for ${newConnection.id}:`, err?.message || err);
+            console.log(
+              `[providers] Auto-sync error for ${newConnection.id}:`,
+              err?.message || err
+            );
           });
       } catch (syncSetupError) {
         // Defensive: if URL parsing or header construction itself throws, do
