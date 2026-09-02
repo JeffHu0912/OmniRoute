@@ -13,11 +13,11 @@ implementation under `open-sse/vendor/codex-chatgpt-web/`.
 
 ## Relationship to the other ChatGPT providers
 
-| Provider | Endpoint | Client |
-| --- | --- | --- |
-| `chatgpt-session` | `/v1/chat/completions` | any OpenAI-compatible client |
-| `chatgpt-web-codex` | `/v1/responses` | the native Codex CLI only |
-| `chatgpt-web` (retired) | — | fails closed with HTTP 410 |
+| Provider                | Endpoint               | Client                       |
+| ----------------------- | ---------------------- | ---------------------------- |
+| `chatgpt-session`       | `/v1/chat/completions` | any OpenAI-compatible client |
+| `chatgpt-web-codex`     | `/v1/responses`        | the native Codex CLI only    |
+| `chatgpt-web` (retired) | —                      | fails closed with HTTP 410   |
 
 ## Prerequisites
 
@@ -38,15 +38,15 @@ When the session expires, paste a fresh Cookie header and rerun the check.
 
 ## Models
 
-| Model | Account requirement |
-| --- | --- |
-| `chatgpt-session/luna` | Free/Go accounts (Luna selector) |
-| `chatgpt-session/think` | Free/Go accounts |
-| `chatgpt-session/instant` | Sol-capable accounts |
-| `chatgpt-session/medium` | Sol-capable accounts |
-| `chatgpt-session/high` | Sol-capable accounts |
-| `chatgpt-session/extra-high` | Pro-capable accounts |
-| `chatgpt-session/pro` | Pro-capable accounts |
+| Model                        | Account requirement              |
+| ---------------------------- | -------------------------------- |
+| `chatgpt-session/luna`       | Free/Go accounts (Luna selector) |
+| `chatgpt-session/think`      | Free/Go accounts                 |
+| `chatgpt-session/instant`    | Sol-capable accounts             |
+| `chatgpt-session/medium`     | Sol-capable accounts             |
+| `chatgpt-session/high`       | Sol-capable accounts             |
+| `chatgpt-session/extra-high` | Pro-capable accounts             |
+| `chatgpt-session/pro`        | Pro-capable accounts             |
 
 Each model pins one backend model and one reasoning effort. Requesting a route the account does
 not expose fails closed with HTTP 400 instead of silently switching modes.
@@ -59,15 +59,15 @@ asked for one.
 
 ## Errors
 
-| Condition | Status |
-| --- | --- |
-| No Chrome or Chromium available | 503, with a connection-cooldown hint |
-| Missing or unreadable credentials | 401 |
-| Expired session | 401 |
-| ChatGPT usage limit reached | 429 |
-| Model not available for the account | 400 |
-| ChatGPT interface changed (selector timeout) | 400 |
-| Any other turn failure | 502 |
+| Condition                                    | Status                               |
+| -------------------------------------------- | ------------------------------------ |
+| No Chrome or Chromium available              | 503, with a connection-cooldown hint |
+| Missing or unreadable credentials            | 401                                  |
+| Expired session                              | 401                                  |
+| ChatGPT usage limit reached                  | 429                                  |
+| Model not available for the account          | 400                                  |
+| ChatGPT interface changed (selector timeout) | 400                                  |
+| Any other turn failure                       | 502                                  |
 
 Cookies and session state never appear in responses or logs.
 
@@ -75,3 +75,11 @@ Cookies and session state never appear in responses or logs.
 
 Phase 1 covers text chat only. Image generation and editing, citation links and conversation
 resume are not implemented.
+
+Every turn is relayed to ChatGPT through the vendored adapter's own task-framing prompt
+(`open-sse/vendor/codex-chatgpt-web/adapters/chatgpt-web/prompt.ts`), which wraps the request
+before it is typed into the web UI. That framing is not visible to API clients: what a client
+sends is not literally what the ChatGPT session receives. One consequence to watch for is that a
+tool turn may occasionally be answered with a refusal about local-tool access instead of a tool
+block. This has not been observed on a live turn yet — it is a property of the framing that live
+validation still has to confirm or rule out.
