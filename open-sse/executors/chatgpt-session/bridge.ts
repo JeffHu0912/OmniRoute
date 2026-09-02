@@ -64,6 +64,24 @@ const COMMENTARY_PHASE: CodexMessagePhase = "commentary";
  */
 export const CHATGPT_SESSION_STREAM_OPEN_TIMEOUT_MS = 30_000;
 
+/**
+ * Reads `OMNIROUTE_CHATGPT_SESSION_STREAM_OPEN_TIMEOUT_MS` and falls back to
+ * {@link CHATGPT_SESSION_STREAM_OPEN_TIMEOUT_MS} whenever the variable is unset, empty,
+ * unparseable, non-finite, or not positive — mirrors `resolveDirectHeadersTimeoutMs`
+ * (`open-sse/utils/directResponseStartTimeout.ts`). Callers resolve this per request so a
+ * changed environment variable takes effect without a restart.
+ */
+export function resolveChatGptSessionStreamOpenTimeoutMs(
+  env: Record<string, string | undefined> = process.env
+): number {
+  const raw = env.OMNIROUTE_CHATGPT_SESSION_STREAM_OPEN_TIMEOUT_MS;
+  if (raw == null || raw.trim() === "") return CHATGPT_SESSION_STREAM_OPEN_TIMEOUT_MS;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0
+    ? Math.floor(parsed)
+    : CHATGPT_SESSION_STREAM_OPEN_TIMEOUT_MS;
+}
+
 /** Race marker for the gate deadline — distinguishable from any `IteratorResult`. */
 const GATE_TIMED_OUT = Symbol("chatgpt-session-gate-timeout");
 

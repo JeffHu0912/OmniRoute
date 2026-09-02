@@ -5,6 +5,7 @@ import {
   CHATGPT_SESSION_STREAM_OPEN_TIMEOUT_MS,
   buildChatGptSessionCompletion,
   openChatGptSessionStream,
+  resolveChatGptSessionStreamOpenTimeoutMs,
 } from "../../open-sse/executors/chatgpt-session/bridge.ts";
 import type { AdapterEvent } from "../../open-sse/vendor/codex-chatgpt-web/types.ts";
 
@@ -438,3 +439,51 @@ test("no event is lost to the deadline race", async () => {
   assert.match(text, /"content":"one"/);
   assert.match(text, /"content":"two"/);
 });
+
+const STREAM_OPEN_TIMEOUT_ENV_VAR = "OMNIROUTE_CHATGPT_SESSION_STREAM_OPEN_TIMEOUT_MS";
+
+function withStreamOpenTimeoutEnv(raw: string | undefined, run: () => void): void {
+  const saved = process.env[STREAM_OPEN_TIMEOUT_ENV_VAR];
+  if (raw === undefined) delete process.env[STREAM_OPEN_TIMEOUT_ENV_VAR];
+  else process.env[STREAM_OPEN_TIMEOUT_ENV_VAR] = raw;
+  try {
+    run();
+  } finally {
+    if (saved === undefined) delete process.env[STREAM_OPEN_TIMEOUT_ENV_VAR];
+    else process.env[STREAM_OPEN_TIMEOUT_ENV_VAR] = saved;
+  }
+}
+
+test("resolveChatGptSessionStreamOpenTimeoutMs falls back to the default when the env var is unset", () => {
+  withStreamOpenTimeoutEnv(undefined, () => {
+    assert.equal(
+      resolveChatGptSessionStreamOpenTimeoutMs(),
+      CHATGPT_SESSION_STREAM_OPEN_TIMEOUT_MS
+    );
+  });
+});
+
+test("resolveChatGptSessionStreamOpenTimeoutMs honors a valid positive integer", () => {
+  withStreamOpenTimeoutEnv("45000", () => {
+    assert.equal(resolveChatGptSessionStreamOpenTimeoutMs(), 45_000);
+  });
+});
+
+const INVALID_STREAM_OPEN_TIMEOUT_INPUTS: Array<[label: string, raw: string]> = [
+  ["an empty string", ""],
+  ["non-numeric text", "not-a-number"],
+  ["zero", "0"],
+  ["a negative number", "-10"],
+  ["a non-finite value", "Infinity"],
+];
+
+for (const [label, raw] of INVALID_STREAM_OPEN_TIMEOUT_INPUTS) {
+  test(`resolveChatGptSessionStreamOpenTimeoutMs falls back to the default for ${label}`, () => {
+    withStreamOpenTimeoutEnv(raw, () => {
+      assert.equal(
+        resolveChatGptSessionStreamOpenTimeoutMs(),
+        CHATGPT_SESSION_STREAM_OPEN_TIMEOUT_MS
+      );
+    });
+  });
+}

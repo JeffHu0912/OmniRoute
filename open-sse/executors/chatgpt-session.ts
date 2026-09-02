@@ -24,6 +24,7 @@ import { connectionRuntimePaths } from "./chatgpt-web-codex/storageState.ts";
 import {
   buildChatGptSessionCompletion,
   openChatGptSessionStream,
+  resolveChatGptSessionStreamOpenTimeoutMs,
   type ChatGptSessionResponseMeta,
 } from "./chatgpt-session/bridge.ts";
 import { classifyChatGptSessionError } from "./chatgpt-session/errors.ts";
@@ -311,7 +312,9 @@ export class ChatGptSessionExecutor extends BaseExecutor {
       }
 
       void run();
-      const opened = await openChatGptSessionStream(events, meta);
+      const opened = await openChatGptSessionStream(events, meta, {
+        streamOpenTimeoutMs: resolveChatGptSessionStreamOpenTimeoutMs(),
+      });
       if (opened.kind === "error") {
         // Every field of the verdict comes from the bridge's classification of the real adapter
         // event — status, code and fallbackHint alike. Re-classifying the sanitized message here
