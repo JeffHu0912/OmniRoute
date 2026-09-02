@@ -90,6 +90,16 @@
       "configSource": "<custom-config>",
       "provider": "chatgpt-web-codex"
     },
+    "cgpt-session": {
+      "className": "ChatGptSessionExecutor",
+      "configSource": "<custom-config>",
+      "provider": "chatgpt-session"
+    },
+    "chatgpt-session": {
+      "className": "ChatGptSessionExecutor",
+      "configSource": "<custom-config>",
+      "provider": "chatgpt-session"
+    },
     "chatgpt-web-codex": {
       "className": "ChatGptWebCodexExecutor",
       "configSource": "<custom-config>",
@@ -666,6 +676,6 @@
       "provider": "zai-web"
     }
   },
-  "keyCount": 133,
+  "keyCount": 135,
   "sharedInstances": []
 }
