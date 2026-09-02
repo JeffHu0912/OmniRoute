@@ -8,6 +8,11 @@
  * (heartbeats, assistant boundaries), commentary-phase text, empty text deltas and reasoning are
  * all non-committing on both paths. Once real content has been emitted the status line is
  * already committed, so a later failure just closes the stream cleanly.
+ *
+ * The gate is bounded: nothing at all can reach the client while it is closed (not even a
+ * keepalive, since the first byte commits the 200), and a turn here runs in a real browser that
+ * may think for a long time. Past `CHATGPT_SESSION_STREAM_OPEN_TIMEOUT_MS` the stream opens
+ * anyway and keeps consuming the same iterator, so a slow-but-healthy turn stays connected.
  */
 
 import { buildErrorBody, sanitizeErrorMessage } from "../../utils/error.ts";
@@ -42,6 +47,30 @@ export type ChatGptSessionStreamOpen =
  * model output and it is not model reasoning, so it never reaches the client on either path.
  */
 const COMMENTARY_PHASE: CodexMessagePhase = "commentary";
+
+/**
+ * How long the stream-open gate waits for the first committing event before opening the stream
+ * anyway.
+ *
+ * The trade-off: while the gate is closed the client sees nothing, so an idle-timeout client can
+ * hang up on a healthy turn that is simply thinking for a long time in the browser. Opening the
+ * stream commits the 200, which costs the ability to answer with a real HTTP status if the turn
+ * dies later — but every failure that needs a real status (no browser, missing or expired
+ * credentials, rate limiting, an incompatible route) surfaces within seconds, far inside this
+ * window. Only a genuinely long-running healthy turn reaches the deadline.
+ *
+ * Callers can override it per request through `options.streamOpenTimeoutMs`; a value that is not
+ * a finite number greater than zero disables the deadline and the gate waits indefinitely.
+ */
+export const CHATGPT_SESSION_STREAM_OPEN_TIMEOUT_MS = 30_000;
+
+/** Race marker for the gate deadline — distinguishable from any `IteratorResult`. */
+const GATE_TIMED_OUT = Symbol("chatgpt-session-gate-timeout");
+
+export interface ChatGptSessionStreamOptions {
+  /** Overrides {@link CHATGPT_SESSION_STREAM_OPEN_TIMEOUT_MS} for this call (tests, tuning). */
+  streamOpenTimeoutMs?: number;
+}
 
 interface OpenAiUsage {
   prompt_tokens: number;
@@ -88,7 +117,8 @@ function finishReasonFor(event: AdapterEvent): string {
 
 export async function openChatGptSessionStream(
   events: AsyncIterable<AdapterEvent>,
-  meta: ChatGptSessionResponseMeta
+  meta: ChatGptSessionResponseMeta,
+  options?: ChatGptSessionStreamOptions
 ): Promise<ChatGptSessionStreamOpen> {
   const iterator = events[Symbol.asyncIterator]();
   // Reasoning that arrives while the gate is still closed is real output the client must
@@ -96,19 +126,50 @@ export async function openChatGptSessionStream(
   // absent CONTENT regardless of how much reasoning preceded it.
   const bufferedReasoning: AdapterEvent[] = [];
   let first: AdapterEvent | null = null;
+  // The `iterator.next()` the deadline outran. It is still in flight and will settle with the
+  // event the gate never saw, so the stream body must await THIS promise instead of asking the
+  // iterator for another one — a second `next()` would queue behind it and the first event would
+  // be lost with the abandoned promise.
+  let pendingNext: Promise<IteratorResult<AdapterEvent>> | null = null;
 
-  for (;;) {
-    const next = await iterator.next();
-    if (next.done) break;
-    const event = next.value;
-    if (event.type === "heartbeat" || event.type === "assistant_boundary") continue;
-    if (event.type === "text_delta" && (!event.text || event.phase === COMMENTARY_PHASE)) continue;
-    if (event.type === "thinking_delta") {
-      bufferedReasoning.push(event);
-      continue;
+  const timeoutMs = options?.streamOpenTimeoutMs ?? CHATGPT_SESSION_STREAM_OPEN_TIMEOUT_MS;
+  const bounded = Number.isFinite(timeoutMs) && timeoutMs > 0;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = bounded
+    ? new Promise<typeof GATE_TIMED_OUT>((resolve) => {
+        timer = setTimeout(() => resolve(GATE_TIMED_OUT), timeoutMs);
+        // A gate deadline must never be the reason the process stays alive.
+        (timer as unknown as { unref?: () => void }).unref?.();
+      })
+    : null;
+
+  try {
+    for (;;) {
+      const step = iterator.next();
+      const settled: IteratorResult<AdapterEvent> | typeof GATE_TIMED_OUT = deadline
+        ? await Promise.race([step, deadline])
+        : await step;
+      if (settled === GATE_TIMED_OUT) {
+        pendingNext = step;
+        break;
+      }
+      if (settled.done) break;
+      const event = settled.value;
+      if (event.type === "heartbeat" || event.type === "assistant_boundary") continue;
+      if (event.type === "text_delta" && (!event.text || event.phase === COMMENTARY_PHASE)) {
+        continue;
+      }
+      if (event.type === "thinking_delta") {
+        bufferedReasoning.push(event);
+        continue;
+      }
+      first = event;
+      break;
     }
-    first = event;
-    break;
+  } finally {
+    // Every exit path clears the timer, so a pending deadline can neither fire after the gate
+    // resolved nor hold a handle open.
+    if (timer !== undefined) clearTimeout(timer);
   }
 
   if (first && first.type === "error") {
@@ -181,7 +242,9 @@ export async function openChatGptSessionStream(
             if (!open) break;
           }
           while (open) {
-            const next = await iterator.next();
+            const step = pendingNext ?? iterator.next();
+            pendingNext = null;
+            const next = await step;
             if (next.done) {
               emit(chunk(meta, {}, "stop"));
               break;

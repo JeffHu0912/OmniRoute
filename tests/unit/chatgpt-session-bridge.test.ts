@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  CHATGPT_SESSION_STREAM_OPEN_TIMEOUT_MS,
   buildChatGptSessionCompletion,
   openChatGptSessionStream,
 } from "../../open-sse/executors/chatgpt-session/bridge.ts";
@@ -330,4 +331,110 @@ test("a cooldown-hinted classification reaches the stream-open error verdict", a
   );
   assert.equal(opened.kind, "error");
   assert.equal((opened as { fallbackHint?: string }).fallbackHint, "connection_cooldown");
+});
+
+// I2 — the gate must be bounded: while it is closed the client receives nothing at all (any byte
+// commits the 200), so a healthy turn that thinks for a long time in the browser would otherwise
+// look dead to a client with an idle timeout.
+interface ControllableSource {
+  events: AsyncIterable<AdapterEvent>;
+  push(event: AdapterEvent): void;
+  end(): void;
+}
+
+function controllable(): ControllableSource {
+  const queued: AdapterEvent[] = [];
+  const waiting: Array<(result: IteratorResult<AdapterEvent>) => void> = [];
+  let ended = false;
+  const iterator: AsyncIterator<AdapterEvent> = {
+    next() {
+      const event = queued.shift();
+      if (event) return Promise.resolve({ value: event, done: false });
+      if (ended) return Promise.resolve({ value: undefined, done: true });
+      return new Promise((resolve) => waiting.push(resolve));
+    },
+  };
+  return {
+    events: { [Symbol.asyncIterator]: () => iterator },
+    push(event) {
+      const waiter = waiting.shift();
+      if (waiter) waiter({ value: event, done: false });
+      else queued.push(event);
+    },
+    end() {
+      ended = true;
+      for (const waiter of waiting.splice(0)) waiter({ value: undefined, done: true });
+    },
+  };
+}
+
+test("the default stream-open deadline stays at 30s", () => {
+  assert.equal(CHATGPT_SESSION_STREAM_OPEN_TIMEOUT_MS, 30_000);
+});
+
+test("a silent turn opens the stream once the gate deadline elapses", async () => {
+  const source = controllable();
+  const opened = await openChatGptSessionStream(source.events, META, {
+    streamOpenTimeoutMs: 5,
+  });
+  assert.equal(opened.kind, "stream");
+  const reading = readAll((opened as { stream: ReadableStream<Uint8Array> }).stream);
+  source.push({ type: "heartbeat" });
+  source.push({ type: "text_delta", text: "late answer" });
+  source.push({ type: "done" });
+  source.end();
+  const text = await reading;
+  assert.match(text, /"delta":\{"role":"assistant"\}/);
+  assert.match(text, /"content":"late answer"/);
+  assert.match(text, /"finish_reason":"stop"/);
+  // The role chunk still leads, and heartbeats keep flowing as SSE comments once the gate opened.
+  assert.ok(text.indexOf('"role":"assistant"') < text.indexOf('"content":"late answer"'));
+  assert.match(text, /^: keepalive$/m);
+  assert.ok(text.trimEnd().endsWith("data: [DONE]"));
+});
+
+test("reasoning buffered before the deadline is replayed in order after the gate opens", async () => {
+  const source = controllable();
+  source.push({ type: "thinking_delta", thinking: "first" });
+  source.push({ type: "thinking_delta", thinking: "second" });
+  const opened = await openChatGptSessionStream(source.events, META, {
+    streamOpenTimeoutMs: 5,
+  });
+  assert.equal(opened.kind, "stream");
+  const reading = readAll((opened as { stream: ReadableStream<Uint8Array> }).stream);
+  source.push({ type: "text_delta", text: "answer" });
+  source.push({ type: "done" });
+  source.end();
+  const text = await reading;
+  const roleAt = text.indexOf('"role":"assistant"');
+  const firstAt = text.indexOf('"reasoning_content":"first"');
+  const secondAt = text.indexOf('"reasoning_content":"second"');
+  const answerAt = text.indexOf('"content":"answer"');
+  assert.ok(roleAt >= 0 && firstAt > roleAt && secondAt > firstAt && answerAt > secondAt);
+});
+
+test("an error before the deadline still returns an error verdict, never a timed-out stream", async () => {
+  const source = controllable();
+  const opening = openChatGptSessionStream(source.events, META, {
+    streamOpenTimeoutMs: 1_000,
+  });
+  source.push({ type: "error", message: "ChatGPT reported a usage limit" });
+  const opened = await opening;
+  assert.equal(opened.kind, "error");
+  assert.equal((opened as { status: number }).status, 429);
+});
+
+test("no event is lost to the deadline race", async () => {
+  const source = controllable();
+  const opened = await openChatGptSessionStream(source.events, META, {
+    streamOpenTimeoutMs: 5,
+  });
+  const reading = readAll((opened as { stream: ReadableStream<Uint8Array> }).stream);
+  source.push({ type: "text_delta", text: "one" });
+  source.push({ type: "text_delta", text: "two" });
+  source.push({ type: "done" });
+  source.end();
+  const text = await reading;
+  assert.match(text, /"content":"one"/);
+  assert.match(text, /"content":"two"/);
 });
