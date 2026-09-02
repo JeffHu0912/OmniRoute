@@ -18,6 +18,21 @@ export const WEB_COOKIE_PROVIDERS = {
     riskNoticeVariant: "webCookie",
     toolCalling: "native",
   },
+  "chatgpt-session": {
+    id: "chatgpt-session",
+    serviceKinds: ["llm"],
+    alias: "cgpt-session",
+    name: "ChatGPT Web (Session)",
+    icon: "chat",
+    color: "#10A37F",
+    textIcon: "CS",
+    website: "https://chatgpt.com",
+    authHint:
+      "Paste the full ChatGPT Cookie header. OmniRoute verifies it in an isolated browser profile and then stores only the verified session state.",
+    subscriptionRisk: true,
+    riskNoticeVariant: "webCookie",
+    toolCalling: "emulated",
+  },
   "grok-web": {
     id: "grok-web",
     serviceKinds: ["llm"],

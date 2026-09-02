@@ -35,6 +35,13 @@ export const WEB_SESSION_CREDENTIAL_REQUIREMENTS = {
     acceptsFullCookieHeader: true,
     storageKeys: ["cookie", "sessionToken", "session-token", "__Secure-next-auth.session-token"],
   },
+  "chatgpt-session": {
+    kind: "cookie",
+    credentialName: "ChatGPT Cookie header (full)",
+    placeholder: "__Secure-next-auth.session-token=...; cf_clearance=...",
+    acceptsFullCookieHeader: true,
+    storageKeys: ["cookie", "sessionToken", "session-token", "__Secure-next-auth.session-token"],
+  },
   "zenmux-free": {
     kind: "cookie",
     credentialName: "Cookie header (full)",
