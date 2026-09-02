@@ -8,6 +8,7 @@
  */
 
 import { buildErrorBody, sanitizeErrorMessage } from "../../utils/error.ts";
+import { formatTranslatedStreamError } from "../../utils/streamErrorFormat.ts";
 import type { AdapterEvent, CodexUsage } from "../../vendor/codex-chatgpt-web/types.ts";
 import { classifyChatGptSessionError } from "./errors.ts";
 
@@ -85,7 +86,7 @@ export async function openChatGptSessionStream(
       kind: "error",
       status: classified.status,
       code: classified.code,
-      message: first.message,
+      message: sanitizeErrorMessage(first.message),
     };
   }
 
@@ -96,6 +97,8 @@ export async function openChatGptSessionStream(
       async start(controller) {
         const emit = (text: string) => controller.enqueue(encoder.encode(text));
         emit(chunk(meta, { role: "assistant" }, null));
+
+        let terminatedWithError = false;
 
         const handle = (event: AdapterEvent): boolean => {
           switch (event.type) {
@@ -114,9 +117,19 @@ export async function openChatGptSessionStream(
             case "incomplete":
               emit(chunk(meta, {}, finishReasonFor(event), mapUsage(event.usage)));
               return false;
-            case "error":
-              emit(chunk(meta, {}, "stop", mapUsage(event.usage)));
+            case "error": {
+              const classified = classifyChatGptSessionError(event);
+              emit(
+                formatTranslatedStreamError({
+                  status: classified.status,
+                  message: event.message,
+                  code: classified.code,
+                  type: classified.status >= 500 ? "provider_error" : "invalid_request_error",
+                })
+              );
+              terminatedWithError = true;
               return false;
+            }
             default:
               return true;
           }
@@ -134,7 +147,7 @@ export async function openChatGptSessionStream(
             open = handle(next.value);
           }
         } finally {
-          emit("data: [DONE]\n\n");
+          if (!terminatedWithError) emit("data: [DONE]\n\n");
           controller.close();
         }
       },

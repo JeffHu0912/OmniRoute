@@ -74,6 +74,20 @@ test("an error before any output returns an error verdict instead of a stream", 
   assert.equal((opened as { code: string }).code, "session_expired");
 });
 
+test("an error verdict message is sanitized before it leaves the bridge", async () => {
+  const opened = await openChatGptSessionStream(
+    iterate([
+      {
+        type: "error",
+        message: "not authenticated\n    at /app/open-sse/x.ts:1:1",
+      },
+    ]),
+    META
+  );
+  assert.equal(opened.kind, "error");
+  assert.doesNotMatch((opened as { message: string }).message, /at \//);
+});
+
 test("an error mid-stream terminates the stream after the emitted text", async () => {
   const opened = await openChatGptSessionStream(
     iterate([
@@ -85,8 +99,12 @@ test("an error mid-stream terminates the stream after the emitted text", async (
   assert.equal(opened.kind, "stream");
   const text = await readAll((opened as { stream: ReadableStream<Uint8Array> }).stream);
   assert.match(text, /"content":"partial"/);
-  assert.match(text, /"finish_reason":"stop"/);
+  assert.match(text, /"error"/);
+  assert.match(text, /"message":"boom"/);
+  assert.match(text, /"code":"turn_failed"/);
   assert.ok(text.trimEnd().endsWith("data: [DONE]"));
+  const doneCount = text.split("data: [DONE]").length - 1;
+  assert.equal(doneCount, 1);
 });
 
 test("incomplete maps to a length finish reason", async () => {
@@ -99,6 +117,62 @@ test("incomplete maps to a length finish reason", async () => {
   );
   const text = await readAll((opened as { stream: ReadableStream<Uint8Array> }).stream);
   assert.match(text, /"finish_reason":"length"/);
+});
+
+test("a terminal event as the first meaningful event is replayed, not dropped", async () => {
+  const opened = await openChatGptSessionStream(
+    iterate([{ type: "done", usage: { inputTokens: 1, outputTokens: 1 } }]),
+    META
+  );
+  assert.equal(opened.kind, "stream");
+  const text = await readAll((opened as { stream: ReadableStream<Uint8Array> }).stream);
+  assert.match(text, /"delta":\{"role":"assistant"\}/);
+  assert.match(text, /"finish_reason":"stop"/);
+  assert.ok(text.trimEnd().endsWith("data: [DONE]"));
+});
+
+test("a source that ends with no terminal event still emits a synthetic stop", async () => {
+  const opened = await openChatGptSessionStream(iterate([{ type: "text_delta", text: "x" }]), META);
+  assert.equal(opened.kind, "stream");
+  const text = await readAll((opened as { stream: ReadableStream<Uint8Array> }).stream);
+  assert.match(text, /"content":"x"/);
+  assert.match(text, /"finish_reason":"stop"/);
+  assert.ok(text.trimEnd().endsWith("data: [DONE]"));
+});
+
+test("an empty source still opens a stream with role and a synthetic stop", async () => {
+  const opened = await openChatGptSessionStream(iterate([]), META);
+  assert.equal(opened.kind, "stream");
+  const text = await readAll((opened as { stream: ReadableStream<Uint8Array> }).stream);
+  assert.match(text, /"delta":\{"role":"assistant"\}/);
+  assert.match(text, /"finish_reason":"stop"/);
+  assert.ok(text.trimEnd().endsWith("data: [DONE]"));
+});
+
+test("a heartbeat-only source still opens a stream and never leaks the heartbeat type", async () => {
+  const opened = await openChatGptSessionStream(
+    iterate([{ type: "heartbeat" }, { type: "heartbeat" }]),
+    META
+  );
+  assert.equal(opened.kind, "stream");
+  const text = await readAll((opened as { stream: ReadableStream<Uint8Array> }).stream);
+  assert.match(text, /"delta":\{"role":"assistant"\}/);
+  assert.match(text, /"finish_reason":"stop"/);
+  assert.ok(text.trimEnd().endsWith("data: [DONE]"));
+  assert.doesNotMatch(text, /"heartbeat"/);
+});
+
+test("incomplete with endTurn true maps to a stop finish reason", async () => {
+  const opened = await openChatGptSessionStream(
+    iterate([
+      { type: "text_delta", text: "x" },
+      { type: "incomplete", reason: "x", endTurn: true },
+    ]),
+    META
+  );
+  const text = await readAll((opened as { stream: ReadableStream<Uint8Array> }).stream);
+  assert.match(text, /"finish_reason":"stop"/);
+  assert.doesNotMatch(text, /"finish_reason":"length"/);
 });
 
 test("buffered completion collects content, reasoning and usage", () => {
@@ -139,4 +213,5 @@ test("buffered error bodies never leak a stack trace", () => {
   );
   const error = result.body.error as Record<string, unknown>;
   assert.doesNotMatch(String(error.message), /at \//);
+  assert.match(String(error.message), /failure/);
 });
