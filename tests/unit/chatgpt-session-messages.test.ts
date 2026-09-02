@@ -134,3 +134,50 @@ test("rejects any content part that is neither text nor an image", () => {
     );
   }
 });
+
+test("an assistant refusal part is folded into the mapped content as text", () => {
+  const parsed = buildParsedRequest({
+    route,
+    messages: [
+      { role: "user", content: "one" },
+      {
+        role: "assistant",
+        content: [
+          { type: "refusal", refusal: "I can't help with that." },
+          { type: "text", text: "Here is something else." },
+        ],
+      },
+      { role: "user", content: "three" },
+    ],
+    stream: true,
+  });
+  assert.equal(parsed.context.messages.length, 3);
+  assert.deepEqual(parsed.context.messages[1], {
+    role: "assistant",
+    content: [{ type: "text", text: "I can't help with that.\nHere is something else." }],
+    timestamp: parsed.context.messages[1].timestamp,
+  });
+});
+
+test("a refusal part whose refusal field is not a string is still rejected", () => {
+  for (const part of [
+    { type: "refusal" },
+    { type: "refusal", refusal: null },
+    { type: "refusal", refusal: { text: "nope" } },
+    { type: "refusal", text: "wrong field" },
+  ]) {
+    assert.throws(
+      () =>
+        buildParsedRequest({
+          route,
+          messages: [
+            { role: "user", content: "one" },
+            { role: "assistant", content: [part] },
+          ],
+          stream: false,
+        }),
+      (error: unknown) =>
+        error instanceof ChatGptSessionInputError && error.code === "unsupported_content_part"
+    );
+  }
+});

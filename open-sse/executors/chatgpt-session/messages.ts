@@ -42,6 +42,14 @@ function textFromContent(content: unknown): string {
       chunks.push(typed.text);
       continue;
     }
+    // `{ type: "refusal", refusal: "…" }` is a legal ASSISTANT content part in the
+    // chat-completions spec, and a client replaying its own conversation history sends it back
+    // verbatim. It is text as far as the adapter is concerned. A `refusal` part whose payload is
+    // missing or not a string falls through to the rejection below rather than being dropped.
+    if (typed && typed.type === "refusal" && typeof typed.refusal === "string") {
+      chunks.push(typed.refusal);
+      continue;
+    }
     if (typed && (typed.type === "image_url" || typed.type === "image")) {
       throw new ChatGptSessionInputError(
         "vision_unsupported",
