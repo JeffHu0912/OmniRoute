@@ -313,13 +313,13 @@ export class ChatGptSessionExecutor extends BaseExecutor {
       void run();
       const opened = await openChatGptSessionStream(events, meta);
       if (opened.kind === "error") {
-        // `opened.status`/`opened.code` are authoritative: the bridge classified the real
-        // adapter event, which carries its own `status`/`code` and its own `name` (a Playwright
-        // TimeoutError is classified by name, and its message alone would fall through to a
-        // breaker-tripping 502). `ChatGptSessionStreamOpen` has no `fallbackHint` field, so the
-        // message is re-examined for that one value and nothing else.
-        const hint = classifyChatGptSessionError(new Error(opened.message)).fallbackHint;
-        return wrapped(errorResponse(opened.status, opened.message, opened.code, hint), input.body);
+        // Every field of the verdict comes from the bridge's classification of the real adapter
+        // event — status, code and fallbackHint alike. Re-classifying the sanitized message here
+        // would discard the event's own `status`/`code`/`name`.
+        return wrapped(
+          errorResponse(opened.status, opened.message, opened.code, opened.fallbackHint),
+          input.body
+        );
       }
       return wrapped(
         new Response(opened.stream, { status: 200, headers: SSE_HEADERS }),

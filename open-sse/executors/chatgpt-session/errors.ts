@@ -68,6 +68,22 @@ export function classifyChatGptSessionError(error: unknown): ChatGptSessionError
     return { status: 400, code: "browser_ui_timeout" };
   }
 
+  // An explicit numeric status is the adapter's own authoritative verdict. The vendor documents
+  // it that way on `AdapterEvent.error.status` ("Authoritative upstream/proxy status when known;
+  // avoids message-based classification"), and trusting it first is what stops a 503 whose prose
+  // happens to mention signing in from being reported as an expired session — which would mark a
+  // healthy account's credentials dead and pull it out of rotation. Message matching still runs
+  // below, because failures thrown by this executor itself carry no status at all.
+  if (typeof like.status === "number" && like.status >= 400) {
+    const status = like.status;
+    return {
+      status,
+      code: like.code ?? "turn_failed",
+      // 503/429 must cool this one connection down rather than trip the whole-provider breaker.
+      ...(status === 503 || status === 429 ? { fallbackHint: "connection_cooldown" as const } : {}),
+    };
+  }
+
   if (BROWSER_UNAVAILABLE.test(like.message)) {
     return { status: 503, code: "browser_unavailable", fallbackHint: "connection_cooldown" };
   }
@@ -85,9 +101,6 @@ export function classifyChatGptSessionError(error: unknown): ChatGptSessionError
   }
   if (UI_TIMEOUT.test(like.message)) {
     return { status: 400, code: "browser_ui_timeout" };
-  }
-  if (typeof like.status === "number" && like.status >= 400) {
-    return { status: like.status, code: like.code ?? "turn_failed" };
   }
   return { status: 502, code: "turn_failed" };
 }

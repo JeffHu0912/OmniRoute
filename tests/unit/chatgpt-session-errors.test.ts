@@ -80,13 +80,72 @@ test("an explicit upstream status is used when no message pattern matches", () =
   assert.equal(result.status, 502);
 });
 
-// Message-pattern matching intentionally runs before the explicit-status branch, so a
-// recognised message wins even when the error also carries an explicit upstream status.
-test("a matching message wins over an explicit upstream status", () => {
+// CONTRACT CHANGE (deliberate inversion of the previous expectation). This test used to assert
+// that a recognised message beat an explicit upstream status; the precedence is now the other way
+// round. The vendor documents `AdapterEvent.error.status` as "Authoritative upstream/proxy status
+// when known; avoids message-based classification", and honouring that is what stops a 503 whose
+// prose happens to mention signing in from being reported as an expired session — which would
+// mark a HEALTHY account's credentials dead and pull it out of rotation. Message matching still
+// runs, just as the fallback for failures that carry no status at all (everything this executor
+// throws itself).
+test("an explicit upstream status wins over a matching message", () => {
   const result = classifyChatGptSessionError({
     message: "ChatGPT reported a usage limit",
     status: 500,
   });
+  assert.equal(result.status, 500);
+  assert.equal(result.code, "turn_failed");
+});
+
+test("a session-expired message cannot downgrade an explicit 503 to a 401", () => {
+  const result = classifyChatGptSessionError({
+    message: "Please sign in to continue",
+    status: 503,
+  });
+  assert.equal(result.status, 503);
+  assert.notEqual(result.code, "session_expired");
+});
+
+test("an explicit 503 carries the connection cooldown hint", () => {
+  const result = classifyChatGptSessionError({ message: "upstream unavailable", status: 503 });
+  assert.equal(result.status, 503);
+  assert.equal(result.fallbackHint, "connection_cooldown");
+});
+
+test("an explicit 429 carries the connection cooldown hint", () => {
+  const result = classifyChatGptSessionError({ message: "slow down", status: 429 });
+  assert.equal(result.status, 429);
+  assert.equal(result.fallbackHint, "connection_cooldown");
+});
+
+test("an explicit 400 carries no cooldown hint", () => {
+  const result = classifyChatGptSessionError({ message: "bad request", status: 400 });
+  assert.equal(result.status, 400);
+  assert.equal(result.fallbackHint, undefined);
+});
+
+test("an explicit status keeps the event's own code when it carries one", () => {
+  const result = classifyChatGptSessionError({
+    message: "anything",
+    status: 503,
+    code: "upstream_unavailable",
+  });
+  assert.equal(result.code, "upstream_unavailable");
+});
+
+test("a TimeoutError still outranks an explicit upstream status", () => {
+  const timeout = new Error("locator.waitForSelector: Timeout 30000ms exceeded") as Error & {
+    status?: number;
+  };
+  timeout.name = "TimeoutError";
+  timeout.status = 503;
+  const result = classifyChatGptSessionError(timeout);
+  assert.equal(result.status, 400);
+  assert.equal(result.code, "browser_ui_timeout");
+});
+
+test("message patterns still classify failures that carry no status", () => {
+  const result = classifyChatGptSessionError(new Error("ChatGPT reported a usage limit"));
   assert.equal(result.status, 429);
   assert.equal(result.code, "rate_limited");
 });
