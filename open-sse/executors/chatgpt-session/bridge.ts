@@ -1,15 +1,22 @@
 /**
  * Bridges the vendored adapter's event stream into OpenAI chat-completions payloads.
  *
- * Stream opening is gated on the first meaningful event so a turn that fails before producing
- * any output can still be answered with a real HTTP status instead of a 200 stream carrying an
- * error chunk. Once any text has been emitted the status line is already committed, so a later
- * failure just closes the stream cleanly.
+ * Stream opening is gated on the first event that would ALSO count as committed output on the
+ * buffered path, so a turn that fails before producing any assistant content can still be
+ * answered with a real HTTP status instead of a 200 stream carrying an error chunk. The gate and
+ * `buildChatGptSessionCompletion` must agree on what "output" means — transport framing
+ * (heartbeats, assistant boundaries), commentary-phase text, empty text deltas and reasoning are
+ * all non-committing on both paths. Once real content has been emitted the status line is
+ * already committed, so a later failure just closes the stream cleanly.
  */
 
 import { buildErrorBody, sanitizeErrorMessage } from "../../utils/error.ts";
 import { formatTranslatedStreamError } from "../../utils/streamErrorFormat.ts";
-import type { AdapterEvent, CodexUsage } from "../../vendor/codex-chatgpt-web/types.ts";
+import type {
+  AdapterEvent,
+  CodexMessagePhase,
+  CodexUsage,
+} from "../../vendor/codex-chatgpt-web/types.ts";
 import { classifyChatGptSessionError } from "./errors.ts";
 
 export interface ChatGptSessionResponseMeta {
@@ -19,8 +26,22 @@ export interface ChatGptSessionResponseMeta {
 }
 
 export type ChatGptSessionStreamOpen =
-  | { kind: "error"; status: number; code: string; message: string }
+  | {
+      kind: "error";
+      status: number;
+      code: string;
+      message: string;
+      fallbackHint?: "connection_cooldown";
+    }
   | { kind: "stream"; stream: ReadableStream<Uint8Array> };
+
+/**
+ * The adapter tags its own transport chatter with the commentary phase — most visibly the
+ * "local Codex computer is unavailable" banner it emits on every fresh turn while
+ * `localToolsEnabled` is false, which is this provider's permanent configuration. It is not
+ * model output and it is not model reasoning, so it never reaches the client on either path.
+ */
+const COMMENTARY_PHASE: CodexMessagePhase = "commentary";
 
 interface OpenAiUsage {
   prompt_tokens: number;
@@ -70,13 +91,23 @@ export async function openChatGptSessionStream(
   meta: ChatGptSessionResponseMeta
 ): Promise<ChatGptSessionStreamOpen> {
   const iterator = events[Symbol.asyncIterator]();
+  // Reasoning that arrives while the gate is still closed is real output the client must
+  // receive; it just may not commit the status line, because the buffered path fails over on
+  // absent CONTENT regardless of how much reasoning preceded it.
+  const bufferedReasoning: AdapterEvent[] = [];
   let first: AdapterEvent | null = null;
 
   for (;;) {
     const next = await iterator.next();
     if (next.done) break;
-    if (next.value.type === "heartbeat") continue;
-    first = next.value;
+    const event = next.value;
+    if (event.type === "heartbeat" || event.type === "assistant_boundary") continue;
+    if (event.type === "text_delta" && (!event.text || event.phase === COMMENTARY_PHASE)) continue;
+    if (event.type === "thinking_delta") {
+      bufferedReasoning.push(event);
+      continue;
+    }
+    first = event;
     break;
   }
 
@@ -87,10 +118,11 @@ export async function openChatGptSessionStream(
       status: classified.status,
       code: classified.code,
       message: sanitizeErrorMessage(first.message),
+      ...(classified.fallbackHint ? { fallbackHint: classified.fallbackHint } : {}),
     };
   }
 
-  const pending = first;
+  const pending: AdapterEvent[] = first ? [...bufferedReasoning, first] : bufferedReasoning;
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>(
     {
@@ -106,10 +138,17 @@ export async function openChatGptSessionStream(
               emit(": keepalive\n\n");
               return true;
             case "text_delta":
+              if (event.phase === COMMENTARY_PHASE) return true;
               if (event.text) emit(chunk(meta, { content: event.text }, null));
               return true;
             case "thinking_delta":
               if (event.thinking) emit(chunk(meta, { reasoning_content: event.thinking }, null));
+              return true;
+            case "assistant_boundary":
+              // Internal framing between the adapter's guarded first pass and its one-shot
+              // continuation (the vendor's Responses bridge only closes the open item here).
+              // There is no chat-completions delta for it, and letting it reach `default` would
+              // be indistinguishable from a real event we forgot to handle.
               return true;
             case "done":
               emit(chunk(meta, {}, "stop", mapUsage(event.usage)));
@@ -137,7 +176,10 @@ export async function openChatGptSessionStream(
 
         try {
           let open = true;
-          if (pending) open = handle(pending);
+          for (const event of pending) {
+            open = handle(event);
+            if (!open) break;
+          }
           while (open) {
             const next = await iterator.next();
             if (next.done) {
@@ -172,8 +214,9 @@ export function buildChatGptSessionCompletion(
   let failure: AdapterEvent | null = null;
 
   for (const event of events) {
-    if (event.type === "text_delta") content += event.text;
-    else if (event.type === "thinking_delta") reasoning += event.thinking;
+    if (event.type === "text_delta") {
+      if (event.phase !== COMMENTARY_PHASE) content += event.text;
+    } else if (event.type === "thinking_delta") reasoning += event.thinking;
     else if (event.type === "done") usage = event.usage;
     else if (event.type === "incomplete") {
       usage = event.usage;

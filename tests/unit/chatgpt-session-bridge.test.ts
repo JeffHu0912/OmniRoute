@@ -215,3 +215,119 @@ test("buffered error bodies never leak a stack trace", () => {
   assert.doesNotMatch(String(error.message), /at \//);
   assert.match(String(error.message), /failure/);
 });
+
+test("the commentary read-only banner never reaches streamed content", async () => {
+  const opened = await openChatGptSessionStream(
+    iterate([
+      { type: "assistant_boundary" },
+      {
+        type: "text_delta",
+        text: "⚠️ The local Codex computer is unavailable, so this turn is read-only.",
+        phase: "commentary",
+      },
+      { type: "assistant_boundary" },
+      { type: "text_delta", text: "real answer" },
+      { type: "done" },
+    ]),
+    META
+  );
+  assert.equal(opened.kind, "stream");
+  const text = await readAll((opened as { stream: ReadableStream<Uint8Array> }).stream);
+  const content = [...text.matchAll(/"content":"((?:[^"\\]|\\.)*)"/g)]
+    .map((match) => JSON.parse(`"${match[1]}"`) as string)
+    .join("");
+  assert.equal(content, "real answer");
+  assert.doesNotMatch(text, /read-only/);
+  assert.doesNotMatch(text, /Codex computer/);
+  // Commentary must not be laundered into reasoning either — it is transport chatter.
+  assert.doesNotMatch(text, /"reasoning_content"/);
+});
+
+test("the commentary read-only banner never reaches buffered content", () => {
+  const result = buildChatGptSessionCompletion(
+    [
+      { type: "assistant_boundary" },
+      {
+        type: "text_delta",
+        text: "⚠️ The local Codex computer is unavailable, so this turn is read-only.",
+        phase: "commentary",
+      },
+      { type: "assistant_boundary" },
+      { type: "text_delta", text: "real answer" },
+      { type: "done" },
+    ],
+    META
+  );
+  assert.equal(result.status, 200);
+  const message = (result.body.choices as Array<Record<string, unknown>>)[0].message as Record<
+    string,
+    unknown
+  >;
+  assert.equal(message.content, "real answer");
+  assert.equal("reasoning_content" in message, false);
+  assert.doesNotMatch(JSON.stringify(result.body), /read-only/);
+});
+
+// I1 — the streaming gate and the buffered failover must agree on what counts as committed
+// output. Reasoning alone commits neither, so a failure right after a thinking delta is a real
+// HTTP status on BOTH paths instead of a 200 stream carrying an in-band error chunk.
+test("reasoning before an error does not commit a 200 on the streaming path", async () => {
+  const opened = await openChatGptSessionStream(
+    iterate([
+      { type: "thinking_delta", thinking: "weighing options" },
+      { type: "error", message: "ChatGPT reported a usage limit", status: 429 },
+    ]),
+    META
+  );
+  assert.equal(opened.kind, "error");
+  assert.equal((opened as { status: number }).status, 429);
+});
+
+test("the buffered path returns the same status for reasoning followed by an error", () => {
+  const result = buildChatGptSessionCompletion(
+    [
+      { type: "thinking_delta", thinking: "weighing options" },
+      { type: "error", message: "ChatGPT reported a usage limit", status: 429 },
+    ],
+    META
+  );
+  assert.equal(result.status, 429);
+});
+
+test("reasoning buffered behind the gate is still streamed once the gate opens", async () => {
+  const opened = await openChatGptSessionStream(
+    iterate([
+      { type: "thinking_delta", thinking: "first" },
+      { type: "thinking_delta", thinking: "second" },
+      { type: "text_delta", text: "answer" },
+      { type: "done" },
+    ]),
+    META
+  );
+  assert.equal(opened.kind, "stream");
+  const text = await readAll((opened as { stream: ReadableStream<Uint8Array> }).stream);
+  assert.match(text, /"reasoning_content":"first"/);
+  assert.match(text, /"reasoning_content":"second"/);
+  assert.match(text, /"content":"answer"/);
+});
+
+test("an empty text delta does not commit a 200 ahead of an error", async () => {
+  const opened = await openChatGptSessionStream(
+    iterate([
+      { type: "text_delta", text: "" },
+      { type: "error", message: "ChatGPT reported a usage limit" },
+    ]),
+    META
+  );
+  assert.equal(opened.kind, "error");
+  assert.equal((opened as { status: number }).status, 429);
+});
+
+test("a cooldown-hinted classification reaches the stream-open error verdict", async () => {
+  const opened = await openChatGptSessionStream(
+    iterate([{ type: "error", message: "upstream unavailable", status: 503 }]),
+    META
+  );
+  assert.equal(opened.kind, "error");
+  assert.equal((opened as { fallbackHint?: string }).fallbackHint, "connection_cooldown");
+});
