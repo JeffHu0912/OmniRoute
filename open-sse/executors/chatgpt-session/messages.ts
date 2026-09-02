@@ -34,18 +34,27 @@ function textFromContent(content: unknown): string {
   if (!Array.isArray(content)) return "";
   const chunks: string[] = [];
   for (const part of content) {
-    if (!part || typeof part !== "object") continue;
-    const typed = part as Record<string, unknown>;
-    if (typed.type === "text" && typeof typed.text === "string") {
+    const typed =
+      part && typeof part === "object" && !Array.isArray(part)
+        ? (part as Record<string, unknown>)
+        : null;
+    if (typed && typed.type === "text" && typeof typed.text === "string") {
       chunks.push(typed.text);
       continue;
     }
-    if (typed.type === "image_url" || typed.type === "image") {
+    if (typed && (typed.type === "image_url" || typed.type === "image")) {
       throw new ChatGptSessionInputError(
         "vision_unsupported",
         "ChatGPT Session does not accept image input yet"
       );
     }
+    // Every other part — file, input_audio, a future part type, or anything malformed — would
+    // otherwise be dropped in silence, and the model would answer about content it never
+    // received. Reject loudly instead.
+    throw new ChatGptSessionInputError(
+      "unsupported_content_part",
+      "ChatGPT Session does not accept this message content part type"
+    );
   }
   return chunks.join("\n");
 }

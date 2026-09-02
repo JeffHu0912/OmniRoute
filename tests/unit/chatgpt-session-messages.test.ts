@@ -116,3 +116,21 @@ test("never carries tools into the parsed context", () => {
   });
   assert.equal(parsed.context.tools, undefined);
 });
+
+test("rejects any content part that is neither text nor an image", () => {
+  for (const part of [
+    { type: "file", file: { file_id: "f-1" } },
+    { type: "input_audio", input_audio: { data: "AA", format: "wav" } },
+  ]) {
+    assert.throws(
+      () =>
+        buildParsedRequest({
+          route,
+          messages: [{ role: "user", content: [part] }],
+          stream: false,
+        }),
+      (error: unknown) =>
+        error instanceof ChatGptSessionInputError && error.code === "unsupported_content_part"
+    );
+  }
+});
