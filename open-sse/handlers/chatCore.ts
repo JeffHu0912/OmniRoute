@@ -4927,7 +4927,14 @@ export async function handleChatCore({
           error: err.error || "Provider request failed",
           providerRequest: finalBody || translatedBody,
           providerResponse: isNetworkThrow ? undefined : err.response,
-          clientResponse: buildErrorBody(err.status, err.error || "Provider request failed"),
+          // On a client abort the client already disconnected before we got here, so this
+          // body is what we WOULD have sent, not what was delivered. The dashboard reads
+          // `clientResponse` as "what the client received", so logging it misleads —
+          // `error` above already records the reason. The pre-#12867 path omitted it here;
+          // the leg-based path must keep doing so.
+          clientResponse: isLocalStreamLifecycleError(err.originalError)
+            ? undefined
+            : buildErrorBody(err.status, err.error || "Provider request failed"),
           cacheSource: "upstream",
         });
         persistFailureUsage(err.status, err.errorCode || `upstream_${err.status}`);
@@ -4939,8 +4946,34 @@ export async function handleChatCore({
       const expectedConn = managedLease
         ? String(getCurrentConnectionId() || connectionId || "") || undefined
         : undefined;
+      // The identity is the tool loop's execution fence key, and deriveToolRequestIdentity
+      // canonicalizes the body — which by design rejects Dates, Maps and class instances.
+      // It was computed eagerly, so a body carrying any of those threw on EVERY
+      // non-streaming request even with SERVER_OWNED_TOOL_LOOP_ENABLED off (the default).
+      // Derive it only when the loop can run, and fail closed rather than crash: no
+      // identity means no fence, and without a fence the loop must not run.
+      let toolLoopEnabled = isServerOwnedToolLoopEnabled();
+      let postInjectionRequestIdentity = "";
+      if (toolLoopEnabled) {
+        try {
+          postInjectionRequestIdentity = derivePostInjectionRequestIdentity({
+            apiKeyId: memoryOwnerId || "local",
+            headers: clientRawRequest?.headers ?? null,
+            skillRequestId,
+            postInjectionBody: (body || {}) as Record<string, unknown>,
+          });
+        } catch (identityError) {
+          log?.warn?.(
+            "SERVER_OWNED_TOOL_LOOP",
+            `request body is not canonicalizable, skipping the loop: ${
+              identityError instanceof Error ? identityError.message : "unknown"
+            }`
+          );
+          toolLoopEnabled = false;
+        }
+      }
       const loopApply = await applyServerOwnedToolLoopIfNeeded({
-        enabled: isServerOwnedToolLoopEnabled(),
+        enabled: toolLoopEnabled,
         stream,
         isResponsesEndpoint,
         sourceFormat,
@@ -4951,12 +4984,7 @@ export async function handleChatCore({
           apiKeyId: memoryOwnerId || "local",
           sessionId: pipelineSessionId,
           requestId: skillRequestId,
-          requestIdentity: derivePostInjectionRequestIdentity({
-            apiKeyId: memoryOwnerId || "local",
-            headers: clientRawRequest?.headers ?? null,
-            skillRequestId,
-            postInjectionBody: (body || {}) as Record<string, unknown>,
-          }),
+          requestIdentity: postInjectionRequestIdentity,
           builtinToolNames: injectionResult.builtinToolNames,
           injectedCustomSkillNames: injectionResult.injectedCustomSkillNames,
           customSkillExecutionEnabled:
@@ -5066,6 +5094,16 @@ export async function handleChatCore({
         providerHeaders = normalizeHeaders(okLeg.headers);
       }
       finalBody = providerRequestCapture.body(okLeg.providerRequest || translatedBody);
+      // Built inside executeProviderRequest on the pre-#12867 path. The leg now owns the
+      // first non-streaming send, so that assignment never runs here and the meta stayed
+      // null — `_omniroute.claudePromptCache` silently vanished from every call log on
+      // this path. Same inputs, same helper, at the point where they are available.
+      claudePromptCacheLogMeta = buildClaudePromptCacheLogMeta(
+        targetFormat,
+        finalBody,
+        providerHeaders,
+        clientRawRequest?.headers
+      );
       const capturedOk = providerRequestCapture.latest?.();
       reqLogger.logTargetRequest(
         okLeg.requestUrl || capturedOk?.url || "",
