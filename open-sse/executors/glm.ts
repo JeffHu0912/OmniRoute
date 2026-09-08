@@ -223,6 +223,8 @@ export function translateSseResponse(
   suppressThinkClose: boolean = false
 ): Response {
   if (!response.body) return response;
+  // Helper has 15 parameters; a 16th positional (65536) was a TS2554 and
+  // never reached TransformStream. highWaterMark stays at the helper default.
   const transform = createSSETransformStreamWithLogger(
     FORMATS.CLAUDE,
     FORMATS.OPENAI,
