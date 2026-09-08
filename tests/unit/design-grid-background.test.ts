@@ -103,16 +103,34 @@ test("status colors come from one canonical module", () => {
   assert.match(mod, /warning:\s*"#f59e0b"/);
   assert.match(mod, /error:\s*"#ef4444"/);
 
+  // Fase 3 (D1): the two shared flow surfaces moved from the fixed dark hex to the
+  // theme-aware `--orch-status-*` tokens. STATUS_HEX stays exported as the dark-mode
+  // mirror (and the canonical source of the token values in globals.css `.dark`).
   const edges = read("../../src/shared/components/flow/edgeStyles.ts");
   const badge = read("../../src/shared/components/TokenHealthBadge.tsx");
   assert.ok(
-    edges.includes('from "@/shared/constants/statusColors"'),
-    "edgeStyles imports the module"
+    edges.includes("var(--orch-status-success)"),
+    "edgeStyles uses the success token, not a literal"
   );
-  assert.ok(edges.includes("STATUS_HEX.success"), "edgeStyles uses STATUS_HEX, not a literal");
+  assert.ok(edges.includes("var(--orch-status-error)"), "edgeStyles uses the error token");
+  assert.ok(edges.includes("var(--orch-status-warning)"), "edgeStyles uses the warning token");
   assert.ok(!edges.includes('"#22c55e"'), "edgeStyles no longer hardcodes the success hex");
-  assert.ok(badge.includes("STATUS_HEX.success"), "TokenHealthBadge uses STATUS_HEX");
+  assert.ok(
+    badge.includes("var(--orch-status-success)"),
+    "TokenHealthBadge uses the success token"
+  );
+  assert.ok(badge.includes("var(--orch-status-error)"), "TokenHealthBadge uses the error token");
+  assert.ok(
+    badge.includes("var(--orch-status-warning)"),
+    "TokenHealthBadge uses the warning token"
+  );
   assert.ok(!badge.includes('"#22c55e"'), "TokenHealthBadge no longer hardcodes the success hex");
+
+  // Both themes must define every token these surfaces read.
+  for (const token of ["success", "warning", "error", "muted"]) {
+    const hits = globalsCss.match(new RegExp(`--orch-status-${token}:`, "g")) ?? [];
+    assert.equal(hits.length, 2, `--orch-status-${token} is defined in light AND dark`);
+  }
 });
 
 test("globals.css defines a monospace token (site parity)", () => {
