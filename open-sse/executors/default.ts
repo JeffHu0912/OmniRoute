@@ -59,11 +59,7 @@ import {
   normalizeSnowflakeChatUrl,
   normalizeGigachatChatUrl,
 } from "@/lib/providers/validation/urlHelpers";
-import {
-  ensureOpencodeSessionHeader,
-  forwardOpencodeClientHeaders,
-  isOpencodeUpstreamUrl,
-} from "../utils/opencodeHeaders.ts";
+import { forwardOpencodeClientHeaders } from "../utils/opencodeHeaders.ts";
 import { resolveZaiUrl } from "./default/zaiFormatOverride.ts";
 import { normalizePoolConfig } from "./default/poolConfig.ts";
 import { acquireNvidiaConcurrencySlot } from "./default/nvidiaConcurrencyGate.ts";
@@ -672,14 +668,7 @@ export class DefaultExecutor extends BaseExecutor {
     }
 
     // Forward client request metadata headers (from OpenCode or similar clients)
-    // Allowlist-based: only specific x-opencode-* headers and User-Agent are forwarded.
-    // Then (self-use fork): any route whose EFFECTIVE upstream URL belongs to
-    // OpenCode (openai-compatible-* custom nodes pointed at opencode.ai, e.g.
-    // the local `go` node serving go/muse-spark-*-contributor — resolved via
-    // resolveBaseUrl so per-connection providerSpecificData.baseUrl is honored)
-    // always carries x-opencode-session: client value wins, otherwise a
-    // per-request UUID. Native opencode-* providers go through OpencodeExecutor
-    // (which synthesizes CLI identity itself) and never reach DefaultExecutor.
+    // Allowlist-based: only specific x-opencode-* headers and User-Agent are forwarded
     if (clientHeaders) {
       forwardOpencodeClientHeaders(headers, clientHeaders);
 
@@ -701,14 +690,6 @@ export class DefaultExecutor extends BaseExecutor {
           model
         );
       }
-    }
-
-    if (
-      this.provider?.startsWith?.("opencode") ||
-      isOpencodeUpstreamUrl(this.resolveBaseUrl(credentials)) ||
-      isOpencodeUpstreamUrl(credentials?.providerSpecificData?.baseUrl)
-    ) {
-      ensureOpencodeSessionHeader(headers);
     }
 
     normalizeAnthropicHeaderVariants(headers);

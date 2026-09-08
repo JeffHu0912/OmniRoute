@@ -23,37 +23,6 @@ const OPENCODE_HEADER_KEYS = [
 const AGENT_METADATA_HEADER_KEYS = ["x-session-id", "x-title"] as const;
 
 /**
- * Upstream base URLs / hosts that belong to the OpenCode platform. Any
- * DefaultExecutor route whose resolved upstream URL points here gets the
- * x-opencode-session presence guarantee below — this covers
- * openai-compatible-* custom nodes pointed at opencode.ai (e.g. the local
- * `go` node serving go/muse-spark-*-contributor), which never pass through
- * OpencodeExecutor's CLI-identity synthesis. Native opencode-* providers are
- * handled by OpencodeExecutor itself; the matching `startsWith("opencode")`
- * check at the call site is belt-and-braces only.
- */
-const OPENCODE_UPSTREAM_HOSTS = ["opencode.ai", "opencode-ai", "workbuddy"] as const;
-
-export function isOpencodeUpstreamUrl(url: unknown): boolean {
-  if (typeof url !== "string" || !url) return false;
-  const lower = url.toLowerCase();
-  return OPENCODE_UPSTREAM_HOSTS.some((h) => lower.includes(h));
-}
-
-/**
- * Ensure every outbound request to an OpenCode upstream carries
- * x-opencode-session. Client value always wins; otherwise synthesize a
- * per-request UUID (Muse's Responses endpoint rejects the short
- * conversation fingerprint the Chat endpoint accepts — OpencodeExecutor
- * scopes that workaround to muse-spark* models on the responses transport;
- * this shared helper unconditionally guarantees presence for the
- * DefaultExecutor path, which has no CLI-identity synthesis of its own).
- */
-export function ensureOpencodeSessionHeader(headers: Record<string, string>): void {
-  headers["x-opencode-session"] ||= randomUUID();
-}
-
-/**
  * Case-insensitive lookup for a header in a headers record.
  */
 function findHeader(headers: Record<string, string>, name: string): string | undefined {
