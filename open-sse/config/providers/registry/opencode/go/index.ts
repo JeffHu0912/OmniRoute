@@ -226,6 +226,20 @@ export const opencode_goProvider: RegistryEntry = {
       supportsVideo: true,
       targetFormat: "openai-responses",
     },
+    // Muse Spark 1.3 Contributor (self-use fork addition — not yet in the
+    // upstream Go registry snapshot): same Responses-API wire format as 1.2.
+    // This is the model DSH routes as go/muse-spark-1.3-contributor.
+    {
+      id: "muse-spark-1.3-contributor",
+      name: "Muse Spark 1.3 Contributor",
+      contextLength: 1048576,
+      maxOutputTokens: 131072,
+      supportsReasoning: true,
+      supportsVision: true,
+      supportsAudio: true,
+      supportsVideo: true,
+      targetFormat: "openai-responses",
+    },
     // #8353: Grok 4.5 + effort tiers from the OpenCode Go registry.
     {
       id: "grok-4.5",
