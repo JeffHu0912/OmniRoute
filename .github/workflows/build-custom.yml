@@ -43,8 +43,6 @@ jobs:
   build:
     name: Build + push (linux/arm64, runner-base)
     runs-on: ubuntu-24.04-arm
-    env:
-      GHCR_IMAGE: ghcr.io/${{ github.repository_owner }}/omniroute
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -52,17 +50,21 @@ jobs:
           persist-credentials: false
 
       - name: Resolve tag
-        id: tag
+        id: meta
         env:
           INPUT_TAG: ${{ inputs.tag }}
           REF_NAME: ${{ github.ref_name }}
+          REPO_OWNER: ${{ github.repository_owner }}
         run: |
           set -euo pipefail
           TAG="${INPUT_TAG:-$REF_NAME}"
           # sanitize: lowercase, keep [a-z0-9._-], max 128 chars (Docker tag rules)
           TAG="$(printf '%s' "$TAG" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9._-' '-' | cut -c1-128)"
+          # GHCR repository path must be lowercase (owner JeffHu0912 -> jeffhu0912)
+          OWNER_LC="$(printf '%s' "$REPO_OWNER" | tr '[:upper:]' '[:lower:]')"
+          echo "image=ghcr.io/${OWNER_LC}/omniroute" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "Building ${GHCR_IMAGE}:$TAG"
+          echo "Building ghcr.io/${OWNER_LC}/omniroute:$TAG"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -82,7 +84,7 @@ jobs:
           platforms: linux/arm64
           build-args: |
             OMNIROUTE_USE_TURBOPACK=0
-          tags: ${{ env.GHCR_IMAGE }}:${{ steps.tag.outputs.tag }}
+          tags: ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}
           push: true
           cache-from: type=gha,scope=custom-build
           cache-to: type=gha,scope=custom-build,mode=max,ignore-error=true
