@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import { BaseExecutor, type ExecuteInput } from "./base.ts";
 import { mapNvidiaGlm52ReasoningParams } from "./base/reasoningEffort.ts";
@@ -689,6 +689,22 @@ export class DefaultExecutor extends BaseExecutor {
           // model that does not qualify (e.g. Haiku), which Anthropic rejects (#10119).
           model
         );
+      }
+    }
+
+    // Self-use fork: ensure x-opencode-session on opencode.ai upstreams when the
+    // client didn't supply one. This covers openai-compatible-* custom nodes
+    // pointed at opencode.ai (e.g. the local `go` node), which go through
+    // DefaultExecutor and never reach OpencodeExecutor's CLI-identity synthesis.
+    const upstreamUrl = this.resolveBaseUrl(credentials);
+    if (
+      (typeof upstreamUrl === "string" && upstreamUrl.toLowerCase().includes("opencode.ai")) ||
+      (typeof credentials?.providerSpecificData?.baseUrl === "string" &&
+        credentials.providerSpecificData.baseUrl.toLowerCase().includes("opencode.ai"))
+    ) {
+      const hasSession = Object.keys(headers).some((k) => k.toLowerCase() === "x-opencode-session");
+      if (!hasSession) {
+        headers["x-opencode-session"] = randomUUID();
       }
     }
 
