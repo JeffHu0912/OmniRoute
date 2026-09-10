@@ -1,6 +1,9 @@
 import { getDbInstance, rowToCamel, objToSnake } from "./core";
 import { deleteFile } from "./files";
 import { v4 as uuidv4 } from "uuid";
+import { logger } from "../../../open-sse/utils/logger.ts";
+
+const log = logger("DB_BATCHES");
 
 function parseBatchRow(row: any): BatchRecord {
   const camel = rowToCamel(row) as any;
@@ -412,56 +415,89 @@ export function deleteBatch(id: string): boolean {
 }
 
 /**
+ * Scope of a `deleteCompletedBatches` sweep. The intent is explicit on purpose:
+ * a caller either names the API key whose batches it may sweep, or states
+ * `allTenants: true` — there is no default that widens to the whole instance.
+ */
+export type DeleteCompletedBatchesScope = { apiKeyId: string } | { allTenants: true };
+
+/**
  * Delete completed batches and the files they reference.
  *
- * `apiKeyId` scopes the sweep to that key's own batches, exactly like
- * `listBatches`/`countBatches`. Omitting it sweeps the whole instance and is
- * reserved for an authenticated dashboard session — an ordinary inference key
- * that reached this without its own id would otherwise delete every tenant's
- * completed batches and null out their file contents (GHSA-wvxc-jp3v-5mg5).
+ * `{ apiKeyId }` scopes the sweep to that key's own batches, exactly like
+ * `listBatches`/`countBatches`. `{ allTenants: true }` sweeps the whole instance
+ * and is reserved for an authenticated dashboard session — an ordinary inference
+ * key that reached this without its own id would otherwise delete every tenant's
+ * completed batches and null out their file contents (GHSA-wvxc-jp3v-5mg5). A
+ * missing/empty `apiKeyId` without `allTenants` throws instead of silently
+ * widening the sweep.
+ *
+ * Batches whose `api_key_id` IS NULL are intentionally OUT of a key-scoped sweep.
+ * This diverges from `scopeCheck` in `src/app/api/v1/batches/[id]/route.ts`,
+ * which lets any key read/delete a single unowned batch by id: a bulk destructive
+ * sweep must never reach records the key does not own, so unowned batches are
+ * only swept by `{ allTenants: true }`.
+ *
+ * The file soft-deletes, the checkpoint DELETE and the batches DELETE run in one
+ * transaction, so a mid-sweep failure rolls everything back — no batch row is
+ * left pointing at a file whose content was already nulled.
  */
-export function deleteCompletedBatches(apiKeyId?: string): {
+export function deleteCompletedBatches(scope: DeleteCompletedBatchesScope): {
   deletedBatches: number;
   deletedFiles: number;
 } {
+  const scopeObj = scope && typeof scope === "object" ? scope : {};
+  const allTenants = "allTenants" in scopeObj && scopeObj.allTenants === true;
+  const apiKeyId = "apiKeyId" in scopeObj ? scopeObj.apiKeyId : undefined;
+  if (!allTenants && !apiKeyId) {
+    throw new Error("deleteCompletedBatches: apiKeyId required unless allTenants");
+  }
+
   const db = getDbInstance();
 
-  const ownershipClause = apiKeyId ? " AND api_key_id = ?" : "";
-  const ownershipArgs = apiKeyId ? [apiKeyId] : [];
+  const ownershipClause = allTenants ? "" : " AND api_key_id = ?";
+  const ownershipArgs = allTenants ? [] : [apiKeyId];
 
-  // Collect unique file IDs from the completed batches in scope
-  const rows = db
-    .prepare(
-      `SELECT input_file_id, output_file_id, error_file_id FROM batches WHERE status = 'completed'${ownershipClause}`
-    )
-    .all(...ownershipArgs) as Array<{
-    input_file_id: string | null;
-    output_file_id: string | null;
-    error_file_id: string | null;
-  }>;
+  const sweep = db.transaction(() => {
+    // Collect unique file IDs from the completed batches in scope
+    const rows = db
+      .prepare(
+        `SELECT input_file_id, output_file_id, error_file_id FROM batches WHERE status = 'completed'${ownershipClause}`
+      )
+      .all(...ownershipArgs) as Array<{
+      input_file_id: string | null;
+      output_file_id: string | null;
+      error_file_id: string | null;
+    }>;
 
-  const fileIds = new Set<string>();
-  for (const row of rows) {
-    if (row.input_file_id) fileIds.add(row.input_file_id);
-    if (row.output_file_id) fileIds.add(row.output_file_id);
-    if (row.error_file_id) fileIds.add(row.error_file_id);
-  }
-
-  let deletedFiles = 0;
-  for (const fid of fileIds) {
-    try {
-      if (deleteFile(fid)) deletedFiles++;
-    } catch {
-      /* ignore */
+    const fileIds = new Set<string>();
+    for (const row of rows) {
+      if (row.input_file_id) fileIds.add(row.input_file_id);
+      if (row.output_file_id) fileIds.add(row.output_file_id);
+      if (row.error_file_id) fileIds.add(row.error_file_id);
     }
-  }
 
-  db.prepare(
-    `DELETE FROM batch_item_checkpoints WHERE batch_id IN (SELECT id FROM batches WHERE status = 'completed'${ownershipClause})`
-  ).run(...ownershipArgs);
+    let deletedFiles = 0;
+    for (const fid of fileIds) {
+      try {
+        if (deleteFile(fid)) deletedFiles++;
+      } catch (err) {
+        log.warn("deleteCompletedBatches: file soft-delete failed", {
+          fid,
+          err: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
 
-  const result = db
-    .prepare(`DELETE FROM batches WHERE status = 'completed'${ownershipClause}`)
-    .run(...ownershipArgs);
-  return { deletedBatches: result.changes, deletedFiles };
+    db.prepare(
+      `DELETE FROM batch_item_checkpoints WHERE batch_id IN (SELECT id FROM batches WHERE status = 'completed'${ownershipClause})`
+    ).run(...ownershipArgs);
+
+    const result = db
+      .prepare(`DELETE FROM batches WHERE status = 'completed'${ownershipClause}`)
+      .run(...ownershipArgs);
+    return { deletedBatches: result.changes, deletedFiles };
+  });
+
+  return sweep();
 }
