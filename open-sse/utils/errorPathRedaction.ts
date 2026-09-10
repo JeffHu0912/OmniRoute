@@ -529,6 +529,9 @@ function findUnquotedPathEnd(
     let nextTokenStart = tokenEnd;
     while (nextTokenStart < value.length && isWhitespace(value[nextTokenStart])) nextTokenStart++;
     if (nextTokenStart >= value.length) return resolveEndpoint();
+    // A redaction marker ends the span: whatever follows was already made safe
+    // by the credential pass, and swallowing it would erase that evidence.
+    if (startsRedactedToken(value, nextTokenStart)) return resolveEndpoint(true);
     if (isSyntacticallyAbsolutePathAt(value, nextTokenStart)) {
       // A route-shielded upcoming span (e.g. "POST /v1/foo") is never
       // filesystem-sensitive by design — see hasRouteContextBefore. Its mere
@@ -895,6 +898,22 @@ export function stripErrorStackTail(value: string): string {
  * API routes, and punctuation around determinable endpoints. Unequivocal
  * filesystem prefixes fail closed when an unquoted endpoint is ambiguous.
  */
+/**
+ * `[REDACTED]` is the marker an earlier sanitizer pass already wrote over a
+ * credential. It is never part of a filesystem path, and a path span that grows
+ * across it costs the operator the one piece of evidence that pass left behind:
+ * "TLS request failed at /srv/…/client.ts:44:9 access_token=[REDACTED]"
+ * collapsed to a bare "<path>", hiding *which* credential leaked.
+ */
+const REDACTION_MARKER = "[REDACTED]";
+
+/** True when the token starting at `index` carries a redaction marker. */
+function startsRedactedToken(value: string, index: number): boolean {
+  let end = index;
+  while (end < value.length && !isWhitespace(value[end])) end++;
+  return value.slice(index, end).includes(REDACTION_MARKER);
+}
+
 export function redactErrorPaths(value: string): string {
   const quotedPathsRedacted = redactQuotedAbsolutePaths(value);
   const pathSpansRedacted = redactUnquotedAbsolutePathSpans(quotedPathsRedacted);
