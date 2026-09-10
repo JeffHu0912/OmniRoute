@@ -373,7 +373,7 @@ export const MODEL_ACCESS_DENIED_PATTERNS = [
   /\bunsupported\s+model\b/i,
   /\baccess.*denied.*model\b/i,
   /\bmodel.*access.*denied\b/i,
-  /\bplease select a different model\b/i,
+  /\bplease select a different model\b/i, /\bunknown\s+provider\s+for\s+model\b/i,
   // "...access to the requested model" / "model ... access" — bounded lookahead
   // (no nested quantifiers) so it stays ReDoS-safe while requiring BOTH an
   // access/permission word and "model" so a pure auth error never matches.
@@ -413,7 +413,7 @@ const PROVIDER_MODEL_UNSUPPORTED_PATTERNS = [
   /\bmodel\b[\s\S]{0,80}?\b(?:does\s+not\s+support|doesn't\s+support|unsupported)\b/i,
   /\b(?:does\s+not\s+support|doesn't\s+support|unsupported)\b[\s\S]{0,80}?\bmodel\b/i,
   /\bunsupported\s+model\b/i,
-  /\bplease select a different model\b/i,
+  /\bplease select a different model\b/i, /\bunknown\s+provider\s+for\s+model\b/i,
 ];
 
 /**
