@@ -731,6 +731,7 @@ export async function handleChatCore({
       sourceFormat,
       endpointPath,
       providerSpecificData: credentials?.providerSpecificData,
+      body,
     });
   const responsesInputItems = Array.isArray(body?.input) ? body.input : [];
   const customToolNames = collectCustomToolNamesForSourceFormat(
