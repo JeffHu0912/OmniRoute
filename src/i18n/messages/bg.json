@@ -8667,7 +8667,9 @@
     "languagePacksList": "Езикови пакети: {packs}",
     "dragToReorder": "Плъзнете, за да пренаредите стъпката",
     "engine": "Двигател",
-    "intensity": "Интензивност"
+    "intensity": "Интензивност",
+    "activeProfileMasterSwitchOffWarning": "__MISSING__:The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "__MISSING__:Turn it on in Settings"
   },
   "compressionStudio": {
     "noRun": "Няма налично изпълнение на компресиране.",

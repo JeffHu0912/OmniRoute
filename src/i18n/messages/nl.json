@@ -8667,7 +8667,9 @@
     "languagePacksList": "Taalpakketten: {packs}",
     "dragToReorder": "Sleep om stap opnieuw te ordenen",
     "engine": "Engine",
-    "intensity": "Intensiteit"
+    "intensity": "Intensiteit",
+    "activeProfileMasterSwitchOffWarning": "__MISSING__:The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "__MISSING__:Turn it on in Settings"
   },
   "compressionStudio": {
     "noRun": "Geen compressierun beschikbaar.",

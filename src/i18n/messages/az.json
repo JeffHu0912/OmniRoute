@@ -8667,7 +8667,9 @@
     "languagePacksList": "Dil paketləri: {packs}",
     "dragToReorder": "Addımın sırasını dəyişmək üçün sürükləyin",
     "engine": "Mühərrik",
-    "intensity": "İntensivlik"
+    "intensity": "İntensivlik",
+    "activeProfileMasterSwitchOffWarning": "__MISSING__:The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "__MISSING__:Turn it on in Settings"
   },
   "compressionStudio": {
     "noRun": "Heç bir sıxılma icrası mövcud deyil.",

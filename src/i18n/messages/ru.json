@@ -8667,7 +8667,9 @@
     "languagePacksList": "Языковые пакеты: {packs}",
     "dragToReorder": "Перетащите для изменения порядка шагов",
     "engine": "Движок",
-    "intensity": "Интенсивность"
+    "intensity": "Интенсивность",
+    "activeProfileMasterSwitchOffWarning": "__MISSING__:The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "__MISSING__:Turn it on in Settings"
   },
   "compressionStudio": {
     "noRun": "Нет доступных запусков сжатия.",

@@ -8667,7 +8667,9 @@
     "languagePacksList": "Vifurushi vya lugha: {packs}",
     "dragToReorder": "Buruta ili kupanga upya hatua",
     "engine": "Injini",
-    "intensity": "Ukali"
+    "intensity": "Ukali",
+    "activeProfileMasterSwitchOffWarning": "__MISSING__:The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "__MISSING__:Turn it on in Settings"
   },
   "compressionStudio": {
     "noRun": "Hakuna uendeshaji wa mbano unaopatikana.",

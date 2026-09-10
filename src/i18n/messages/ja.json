@@ -8667,7 +8667,9 @@
     "languagePacksList": "言語パック: {packs}",
     "dragToReorder": "ドラッグしてステップを並べ替え",
     "engine": "エンジン",
-    "intensity": "強度"
+    "intensity": "強度",
+    "activeProfileMasterSwitchOffWarning": "__MISSING__:The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "__MISSING__:Turn it on in Settings"
   },
   "compressionStudio": {
     "noRun": "利用可能な圧縮実行はありません。",

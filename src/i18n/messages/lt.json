@@ -8642,7 +8642,9 @@
     "languagePacksList": "Kalbų paketai: {packs}",
     "dragToReorder": "Vilkite, kad pakeistumėte veiksmo vietą",
     "engine": "Variklis",
-    "intensity": "Intensyvumas"
+    "intensity": "Intensyvumas",
+    "activeProfileMasterSwitchOffWarning": "__MISSING__:The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "__MISSING__:Turn it on in Settings"
   },
   "compressionStudio": {
     "noRun": "Nėra pasiekiamų glaudinimo vykdymo duomenų.",

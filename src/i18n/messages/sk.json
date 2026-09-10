@@ -8667,7 +8667,9 @@
     "languagePacksList": "Jazykové balíčky: {packs}",
     "dragToReorder": "Potiahnutím zmeníte poradie kroku",
     "engine": "Engine",
-    "intensity": "Intenzita"
+    "intensity": "Intenzita",
+    "activeProfileMasterSwitchOffWarning": "__MISSING__:The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "__MISSING__:Turn it on in Settings"
   },
   "compressionStudio": {
     "noRun": "Nie je k dispozícii žiadny beh kompresie.",

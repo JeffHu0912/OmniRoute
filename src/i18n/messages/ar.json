@@ -8667,7 +8667,9 @@
     "languagePacksList": "حزم اللغات: {packs}",
     "dragToReorder": "اسحب لإعادة ترتيب الخطوة",
     "engine": "المحرك",
-    "intensity": "الشدة"
+    "intensity": "الشدة",
+    "activeProfileMasterSwitchOffWarning": "__MISSING__:The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "__MISSING__:Turn it on in Settings"
   },
   "compressionStudio": {
     "noRun": "لا يوجد تشغيل ضغط متاح.",

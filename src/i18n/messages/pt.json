@@ -8667,7 +8667,9 @@
     "languagePacksList": "Pacotes de idioma: {packs}",
     "dragToReorder": "Arraste para reordenar o passo",
     "engine": "Motor",
-    "intensity": "Intensidade"
+    "intensity": "Intensidade",
+    "activeProfileMasterSwitchOffWarning": "__MISSING__:The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "__MISSING__:Turn it on in Settings"
   },
   "compressionStudio": {
     "noRun": "Nenhuma execução de compressão disponível.",

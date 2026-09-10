@@ -8667,7 +8667,9 @@
     "languagePacksList": "மொழிப் பொதிகள்: {packs}",
     "dragToReorder": "படியை மறுவரிசைப்படுத்த இழுக்கவும்",
     "engine": "எஞ்சின்",
-    "intensity": "தீவிரம்"
+    "intensity": "தீவிரம்",
+    "activeProfileMasterSwitchOffWarning": "__MISSING__:The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "__MISSING__:Turn it on in Settings"
   },
   "compressionStudio": {
     "noRun": "சுருக்க இயக்கம் எதுவும் கிடைக்கவில்லை.",

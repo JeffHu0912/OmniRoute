@@ -8671,7 +8671,9 @@
     "languagePacksList": "Gói ngôn ngữ: {packs}",
     "dragToReorder": "Kéo để sắp xếp lại bước",
     "engine": "Bộ máy",
-    "intensity": "Cường độ"
+    "intensity": "Cường độ",
+    "activeProfileMasterSwitchOffWarning": "__MISSING__:The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "__MISSING__:Turn it on in Settings"
   },
   "compressionStudio": {
     "noRun": "Chưa có lượt nén nào.",

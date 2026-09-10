@@ -8667,7 +8667,9 @@
     "languagePacksList": "بسته‌های زبان: {packs}",
     "dragToReorder": "برای تغییر ترتیب مرحله بکشید",
     "engine": "موتور",
-    "intensity": "شدت"
+    "intensity": "شدت",
+    "activeProfileMasterSwitchOffWarning": "__MISSING__:The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "__MISSING__:Turn it on in Settings"
   },
   "compressionStudio": {
     "noRun": "هیچ اجرای فشرده‌سازی موجود نیست.",

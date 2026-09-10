@@ -8667,7 +8667,9 @@
     "languagePacksList": "Dil paketleri: {packs}",
     "dragToReorder": "Adımı yeniden sıralamak için sürükleyin",
     "engine": "Motor",
-    "intensity": "Yoğunluk"
+    "intensity": "Yoğunluk",
+    "activeProfileMasterSwitchOffWarning": "__MISSING__:The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "__MISSING__:Turn it on in Settings"
   },
   "compressionStudio": {
     "noRun": "Kullanılabilir sıkıştırma çalışması yok.",

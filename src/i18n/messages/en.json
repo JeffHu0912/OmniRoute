@@ -8657,6 +8657,8 @@
     "contextEditingNote": "Currently available for Claude (Anthropic) only. It is a delegated mode: the provider clears old tool-use blocks server-side — we do not rewrite the message. It does not affect other providers.",
     "namedCombos": "Named combos",
     "namedCombosDescription": "Save different pipelines and assign them to specific routing combos.",
+    "activeProfileMasterSwitchOffWarning": "The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "Turn it on in Settings",
     "comboNamePlaceholder": "Combo name",
     "descriptionPlaceholder": "Description",
     "nameRequired": "Enter a combo name before saving.",

@@ -8667,7 +8667,9 @@
     "languagePacksList": "Nyelvi csomagok: {packs}",
     "dragToReorder": "Húzza a lépés átrendezéséhez",
     "engine": "Motor",
-    "intensity": "Intenzitás"
+    "intensity": "Intenzitás",
+    "activeProfileMasterSwitchOffWarning": "__MISSING__:The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "__MISSING__:Turn it on in Settings"
   },
   "compressionStudio": {
     "noRun": "Nem áll rendelkezésre tömörítési futtatás.",

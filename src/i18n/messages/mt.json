@@ -8642,7 +8642,9 @@
     "languagePacksList": "Pakketti tal-lingwa: {packs}",
     "dragToReorder": "Iddreggja biex tibdel l-ordni tal-pass",
     "engine": "Magna",
-    "intensity": "Intensità"
+    "intensity": "Intensità",
+    "activeProfileMasterSwitchOffWarning": "__MISSING__:The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "__MISSING__:Turn it on in Settings"
   },
   "compressionStudio": {
     "noRun": "Ebda eżekuzzjoni tal-kompressjoni mhi disponibbli.",

@@ -8667,7 +8667,9 @@
     "languagePacksList": "زبان کے پیک: {packs}",
     "dragToReorder": "مرحلے کو دوبارہ ترتیب دینے کے لیے گھسیٹیں",
     "engine": "انجن",
-    "intensity": "شدت"
+    "intensity": "شدت",
+    "activeProfileMasterSwitchOffWarning": "__MISSING__:The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "__MISSING__:Turn it on in Settings"
   },
   "compressionStudio": {
     "noRun": "کوئی کمپریشن رن دستیاب نہیں ہے۔",

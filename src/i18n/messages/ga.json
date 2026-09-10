@@ -8642,7 +8642,9 @@
     "languagePacksList": "Pacáistí teanga: {packs}",
     "dragToReorder": "Tarraing chun céim a atheagrú",
     "engine": "Inneall",
-    "intensity": "Déine"
+    "intensity": "Déine",
+    "activeProfileMasterSwitchOffWarning": "__MISSING__:The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "__MISSING__:Turn it on in Settings"
   },
   "compressionStudio": {
     "noRun": "Níl aon rith comhbhrú ar fáil.",

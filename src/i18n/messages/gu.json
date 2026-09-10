@@ -8667,7 +8667,9 @@
     "languagePacksList": "ભાષા પેક: {packs}",
     "dragToReorder": "પગલાંનો ક્રમ બદલવા માટે ખેંચો",
     "engine": "એન્જિન",
-    "intensity": "તીવ્રતા"
+    "intensity": "તીવ્રતા",
+    "activeProfileMasterSwitchOffWarning": "__MISSING__:The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "__MISSING__:Turn it on in Settings"
   },
   "compressionStudio": {
     "noRun": "કોઈ કમ્પ્રેશન રન ઉપલબ્ધ નથી.",

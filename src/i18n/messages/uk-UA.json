@@ -8667,7 +8667,9 @@
     "languagePacksList": "Мовні пакети: {packs}",
     "dragToReorder": "Перетягніть, щоб змінити порядок кроків",
     "engine": "Рушій",
-    "intensity": "Інтенсивність"
+    "intensity": "Інтенсивність",
+    "activeProfileMasterSwitchOffWarning": "__MISSING__:The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "__MISSING__:Turn it on in Settings"
   },
   "compressionStudio": {
     "noRun": "Немає доступних запусків стиснення.",

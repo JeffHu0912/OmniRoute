@@ -8642,7 +8642,9 @@
     "languagePacksList": "Keelepaketid: {packs}",
     "dragToReorder": "Lohistage etapi järjekorra muutmiseks",
     "engine": "Mootor",
-    "intensity": "Intensiivsus"
+    "intensity": "Intensiivsus",
+    "activeProfileMasterSwitchOffWarning": "__MISSING__:The active profile below will not run until the master \"Prompt Compression\" switch is turned on.",
+    "activeProfileMasterSwitchOffCta": "__MISSING__:Turn it on in Settings"
   },
   "compressionStudio": {
     "noRun": "Ühtegi tihenduskäivitust pole saadaval.",
