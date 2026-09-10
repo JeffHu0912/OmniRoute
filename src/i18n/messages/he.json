@@ -8696,6 +8696,7 @@
     "run": "הרץ",
     "laneRejected": "נדחה: {reason}",
     "error": "שגיאה",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "זרימה משולבת",
     "eachLayer": "כל שכבה בנפרד",
     "diff": "הבדל",

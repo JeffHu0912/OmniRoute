@@ -8700,6 +8700,7 @@
     "run": "Chạy",
     "laneRejected": "bị từ chối: {reason}",
     "error": "lỗi",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "Luồng kết hợp",
     "eachLayer": "Từng lớp riêng biệt",
     "diff": "Khác biệt",

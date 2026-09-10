@@ -8696,6 +8696,7 @@
     "run": "اجرا",
     "laneRejected": "رد شد: {reason}",
     "error": "خطا",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "جریان ترکیبی",
     "eachLayer": "هر لایه به‌صورت جداگانه",
     "diff": "تفاوت",

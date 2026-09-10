@@ -8696,6 +8696,7 @@
     "run": "Spustiť",
     "laneRejected": "odmietnuté: {reason}",
     "error": "chyba",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "Kombinovaný tok",
     "eachLayer": "Každá vrstva samostatne",
     "diff": "Rozdiel",

@@ -8696,6 +8696,7 @@
     "run": "İcra et",
     "laneRejected": "rədd edildi: {reason}",
     "error": "xəta",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "Kombinə edilmiş axın",
     "eachLayer": "Hər qat ayrıca",
     "diff": "Fərq",

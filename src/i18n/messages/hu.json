@@ -8696,6 +8696,7 @@
     "run": "Futtatás",
     "laneRejected": "elutasítva: {reason}",
     "error": "hiba",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "Összevont folyamat",
     "eachLayer": "Minden réteg külön-külön",
     "diff": "Különbség",

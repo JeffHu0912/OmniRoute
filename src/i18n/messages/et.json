@@ -8671,6 +8671,7 @@
     "run": "Käivita",
     "laneRejected": "tagasi lükatud: {reason}",
     "error": "viga",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "Kombineeritud voog",
     "eachLayer": "Iga kiht eraldi",
     "diff": "Erinevus",

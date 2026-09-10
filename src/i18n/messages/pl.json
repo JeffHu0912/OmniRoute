@@ -8696,6 +8696,7 @@
     "run": "Uruchom",
     "laneRejected": "odrzucono: {reason}",
     "error": "błąd",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "Połączony przepływ",
     "eachLayer": "Każda warstwa osobno",
     "diff": "Różnica",

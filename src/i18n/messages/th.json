@@ -8696,6 +8696,7 @@
     "run": "รัน",
     "laneRejected": "ถูกปฏิเสธ: {reason}",
     "error": "ข้อผิดพลาด",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "โฟลว์รวม",
     "eachLayer": "แต่ละเลเยอร์แยกกัน",
     "diff": "ความต่าง",

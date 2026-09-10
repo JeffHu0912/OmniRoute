@@ -8696,6 +8696,7 @@
     "run": "실행",
     "laneRejected": "거부됨: {reason}",
     "error": "오류",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "결합된 흐름",
     "eachLayer": "각 레이어 개별",
     "diff": "차이",

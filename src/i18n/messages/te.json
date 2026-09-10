@@ -8696,6 +8696,7 @@
     "run": "రన్ చేయండి",
     "laneRejected": "తిరస్కరించబడింది: {reason}",
     "error": "లోపం",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "కంబైన్డ్ ఫ్లో",
     "eachLayer": "ప్రతి లేయర్ విడివిడిగా",
     "diff": "వ్యత్యాసం",

@@ -8696,6 +8696,7 @@
     "run": "இயக்கு",
     "laneRejected": "நிராகரிக்கப்பட்டது: {reason}",
     "error": "பிழை",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "ஒருங்கிணைந்த ஓட்டம்",
     "eachLayer": "ஒவ்வொரு அடுக்கையும் தனித்தனியாக",
     "diff": "வேறுபாடு",

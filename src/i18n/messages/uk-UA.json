@@ -8696,6 +8696,7 @@
     "run": "Запустити",
     "laneRejected": "відхилено: {reason}",
     "error": "помилка",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "Комбінований потік",
     "eachLayer": "Кожен шар окремо",
     "diff": "Різниця",

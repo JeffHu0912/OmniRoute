@@ -8696,6 +8696,7 @@
     "run": "執行",
     "laneRejected": "已拒絕：{reason}",
     "error": "錯誤",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "組合流程",
     "eachLayer": "各圖層分開",
     "diff": "差異",

@@ -8671,6 +8671,7 @@
     "run": "Vykdyti",
     "laneRejected": "atmesta: {reason}",
     "error": "klaida",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "Jungtinė eiga",
     "eachLayer": "Kiekvienas sluoksnis atskirai",
     "diff": "Skirtumas",

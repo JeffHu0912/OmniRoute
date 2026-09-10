@@ -8696,6 +8696,7 @@
     "run": "ચલાવો",
     "laneRejected": "નકારવામાં આવ્યું: {reason}",
     "error": "ભૂલ",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "સંયુક્ત પ્રવાહ",
     "eachLayer": "દરેક સ્તર અલગથી",
     "diff": "તફાવત",

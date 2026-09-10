@@ -8696,6 +8696,7 @@
     "run": "चालवा",
     "laneRejected": "नाकारले: {reason}",
     "error": "त्रुटी",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "एकत्रित फ्लो",
     "eachLayer": "प्रत्येक लेयर स्वतंत्रपणे",
     "diff": "फरक",

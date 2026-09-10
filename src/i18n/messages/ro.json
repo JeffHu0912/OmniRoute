@@ -8696,6 +8696,7 @@
     "run": "Rulează",
     "laneRejected": "respins: {reason}",
     "error": "eroare",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "Flux combinat",
     "eachLayer": "Fiecare strat separat",
     "diff": "Diferență",

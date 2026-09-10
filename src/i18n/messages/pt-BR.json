@@ -8700,6 +8700,7 @@
     "run": "Executar",
     "laneRejected": "rejeitado: {reason}",
     "error": "erro",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "Fluxo combinado",
     "eachLayer": "Cada camada separadamente",
     "diff": "Diferença",

@@ -8671,6 +8671,7 @@
     "run": "Izpildīt",
     "laneRejected": "noraidīts: {reason}",
     "error": "kļūda",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "Apvienotā plūsma",
     "eachLayer": "Katrs slānis atsevišķi",
     "diff": "Atšķirība",

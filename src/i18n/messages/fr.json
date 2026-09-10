@@ -8696,6 +8696,7 @@
     "run": "Exécuter",
     "laneRejected": "rejeté : {reason}",
     "error": "erreur",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "Flux combiné",
     "eachLayer": "Chaque couche séparément",
     "diff": "Différence",

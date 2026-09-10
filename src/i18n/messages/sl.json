@@ -8671,6 +8671,7 @@
     "run": "Zaženi",
     "laneRejected": "zavrnjeno: {reason}",
     "error": "napaka",
+    "combinedError": "__MISSING__:Combined pipeline preview failed: {reason}",
     "combinedFlow": "Združeni tok",
     "eachLayer": "Vsaka plast posebej",
     "diff": "Razlika",
