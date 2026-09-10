@@ -387,6 +387,11 @@ export interface ComboExclusion {
   model?: string;
   reason: string;
 }
+/** #12659: one skip reason's targets, surfaced on an ALL_TARGETS_SKIPPED body. */
+export interface ComboSkippedTargetGroup {
+  reason: string;
+  targets: string[];
+}
 export interface ComboDiagnostics {
   poolSize: number;
   attempted: number;
@@ -395,6 +400,13 @@ export interface ComboDiagnostics {
   terminalReason: string;
   /** Optional next-step hint — populated when the dispatcher can recommend a recovery action. */
   recovery?: ComboRecoveryHint;
+  /**
+   * #12659: per-target skip reasons (e.g. `persisted_cooldown`) recorded on the
+   * decision trace but not captured by `excluded` (which only sources from
+   * exhaustedProviders/exhaustedConnections). Optional — populated only when
+   * the caller has a decision trace to summarize.
+   */
+  skippedTargets?: ComboSkippedTargetGroup[];
 }
 
 function clampDiagStr(v: unknown, max = 128): string {
@@ -482,6 +494,12 @@ export function sanitizeComboDiagnostics(d: ComboDiagnostics): ComboDiagnostics 
     terminalReason: clampDiagStr(d?.terminalReason, 200),
   };
   if (recovery) out.recovery = recovery;
+  if (Array.isArray(d?.skippedTargets) && d.skippedTargets.length > 0) {
+    out.skippedTargets = d.skippedTargets.slice(0, 32).map((g) => ({
+      reason: clampDiagStr(g?.reason, 64),
+      targets: (g?.targets ?? []).slice(0, 32).map((t) => clampDiagStr(t, 96)),
+    }));
+  }
   return out;
 }
 
