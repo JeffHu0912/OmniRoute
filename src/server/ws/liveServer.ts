@@ -32,6 +32,7 @@ import type { DashboardEventName, DashboardEventMap, DashboardChannel } from "@/
 
 import { CHANNEL_EVENTS, getChannelForEvent } from "@/lib/events/types";
 import { isAutomatedTestProcess, isBuildProcess } from "@/shared/utils/testProcess";
+import { warnIfNonLoopbackWithoutApiKey } from "@/lib/startup/nonLoopbackApiKeyGuard";
 
 import {
   attachRequestStreamGuards,
@@ -650,6 +651,7 @@ export function isLiveWsEnabled(): boolean {
 if (!isBuildOrTest() && isLiveWsEnabled()) {
   const port = parseInt(process.env.LIVE_WS_PORT || String(DEFAULT_PORT), 10);
   const host = process.env.LIVE_WS_HOST || DEFAULT_HOST;
+  warnIfNonLoopbackWithoutApiKey("Live dashboard WebSocket", host);
   startLiveDashboardServer(port, host).catch((err) => {
     console.error("[LiveWS] Failed to start: %s", err instanceof Error ? err.message : String(err));
   });
