@@ -32,6 +32,9 @@ import path from "node:path";
 
 const TEST_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "wvxc-"));
 process.env.DATA_DIR = TEST_DATA_DIR;
+// The soft-delete-failure test observes `log.warn`; pin the level so the assertion
+// does not depend on the ambient APP_LOG_LEVEL (a documented setting like `error` would hide it).
+process.env.APP_LOG_LEVEL = "warn";
 
 const { createFile, getFile, getFileContent } = await import("../../src/lib/db/files.ts");
 const { createBatch, getBatch, deleteCompletedBatches } =
