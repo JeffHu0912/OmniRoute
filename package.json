@@ -484,7 +484,10 @@
     "fast-uri": "^3.1.7",
     "body-parser": "^2.3.0",
     "@yarnpkg/parsers": {
-      "js-yaml": "^4.3.1"
+      "js-yaml": "^4.3.2"
+    },
+    "@openai/codex-security": {
+      "smol-toml": "^1.8.0"
     },
     "jsdom": {
       "undici": "^7.29.0"
