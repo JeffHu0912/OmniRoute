@@ -430,7 +430,8 @@ export type DeleteCompletedBatchesScope = { apiKeyId: string } | { allTenants: t
  * key that reached this without its own id would otherwise delete every tenant's
  * completed batches and null out their file contents (GHSA-wvxc-jp3v-5mg5). A
  * missing/empty `apiKeyId` without `allTenants` throws instead of silently
- * widening the sweep.
+ * widening the sweep, and a scope carrying BOTH `apiKeyId` and `allTenants` is
+ * rejected rather than widened.
  *
  * Batches whose `api_key_id` IS NULL are intentionally OUT of a key-scoped sweep.
  * This diverges from `scopeCheck` in `src/app/api/v1/batches/[id]/route.ts`,

@@ -11,8 +11,11 @@
  *   - an inference key must only sweep its own completed batches and the response
  *     must report 0 deletions when it owns none — proven against an un-scoped
  *     `{ allTenants: true }` regression (the "flip" recorded in the PR notes);
- *   - an authenticated dashboard session sweeps the whole instance, even when the
- *     request ALSO carries an API key (isSessionAuth wins);
+ *   - a presented API key always scopes the sweep to that key, even alongside a
+ *     dashboard session cookie (the key wins, like GET /v1/batches); only a
+ *     session WITHOUT a key sweeps the whole instance;
+ *   - a presented key that does not resolve (deleted/rotated/mistyped) is rejected
+ *     with 401 even when a session cookie is also present (fail closed);
  *   - no credentials at all → 401;
  *   - a sweep that throws → sanitized 500 (no stack trace, no raw SQLite message)
  *     and nothing deleted (the sweep is atomic).
@@ -153,6 +156,29 @@ describe("DELETE /api/v1/batches/delete-completed — caller scope (GHSA-wvxc-jp
       getFileContent(other.file.id)?.toString(),
       "wvxc-route-both-other",
       "key B's file content is intact"
+    );
+  });
+
+  it("rejects a presented API key that does not resolve with 401 — even alongside a session cookie — and deletes nothing", async () => {
+    const keyB = await createApiKey("wvxc-route-unknown-b", "machine-wvxc-ub", []);
+    const other = seedCompletedBatch(keyB.id, "wvxc-route-unknown-other");
+
+    const { res, body } = await callDelete({
+      Authorization: "Bearer sk-omni-this-key-was-rotated-away-wvxc",
+      cookie: await sessionCookie(),
+    });
+
+    assert.strictEqual(
+      res.status,
+      401,
+      "an unresolvable key must fail closed, not fall through to the session"
+    );
+    assert.match(body.error?.message ?? "", /Invalid API key/);
+    assert.ok(getBatch(other.batch.id), "nothing is swept on a rejected credential");
+    assert.strictEqual(
+      getFileContent(other.file.id)?.toString(),
+      "wvxc-route-unknown-other",
+      "file content is intact on a rejected credential"
     );
   });
 

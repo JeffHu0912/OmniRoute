@@ -142,16 +142,6 @@ describe("deleteCompletedBatches — ownership boundary (GHSA-wvxc-jp3v-5mg5)", 
         }),
       /apiKeyId required unless allTenants/
     );
-    assert.throws(
-      // A mixed scope must be rejected, never silently widened to the instance.
-      () =>
-        (deleteCompletedBatches as unknown as (s: unknown) => unknown)({
-          apiKeyId: "key_survivor_wvxc",
-          allTenants: true,
-        }),
-      /mutually exclusive/
-    );
-
     assert.ok(getBatch(survivor.batch.id), "a rejected call must not delete anything");
     assert.strictEqual(
       getFileContent(survivor.file.id)?.toString(),
@@ -160,6 +150,20 @@ describe("deleteCompletedBatches — ownership boundary (GHSA-wvxc-jp3v-5mg5)", 
     );
 
     deleteCompletedBatches({ apiKeyId: "key_survivor_wvxc" });
+  });
+
+  it("rejects a scope carrying both apiKeyId and allTenants instead of silently widening", () => {
+    const survivor = seedCompletedBatch("key_mixed_wvxc", "wvxc-mixed");
+    assert.throws(
+      () =>
+        (deleteCompletedBatches as unknown as (s: unknown) => unknown)({
+          apiKeyId: "key_mixed_wvxc",
+          allTenants: true,
+        }),
+      /mutually exclusive/
+    );
+    assert.ok(getBatch(survivor.batch.id), "a rejected mixed scope must not delete anything");
+    deleteCompletedBatches({ apiKeyId: "key_mixed_wvxc" });
   });
 
   it("STRICT: a batch with api_key_id NULL stays out of a key-scoped sweep (diverges from scopeCheck on purpose)", () => {
