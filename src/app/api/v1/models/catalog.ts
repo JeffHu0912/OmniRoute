@@ -290,17 +290,21 @@ async function buildUnifiedModelsResponseCore(
     }
   };
   try {
-    // #9147: `getModelIsHidden()` is a SQLite read per call (custom row + compat list)
-    // and the build consults it ~16× per entry. Bulk-load the hidden-model map once
-    // (one query — `getHiddenModelsByProvider`) and resolve from memory for the whole
-    // build. A provider absent from the map has no hidden models at all — `false`,
-    // no on-demand fallback (that would reintroduce the per-call SQLite reads).
-    // Deliberately kept INSIDE this try block (not hoisted above it): the builder's
-    // own catch below is what converts a build-time failure into a sanitized 500
-    // Response instead of a rejected promise — hoisting this bulk read above the
-    // try would let a crash here propagate as an unhandled rejection instead
-    // (catalogCache.ts's in-flight coalescing does not fully consume rejections).
-    const hiddenModelsByProvider = getHiddenModelsByProvider();
+    // #9147/#12172: bulk-load the hidden-model map once PER MODALITY (memoized below,
+    // one SQLite query per modality actually used) instead of `getModelIsHidden()`'s
+    // per-call read — per-modality because chat/images/etc. registries can share a
+    // literal model id and must be hideable independently (#12172). Deliberately kept
+    // INSIDE this try block: the builder's catch below sanitizes a build-time failure
+    // into a 500 instead of a rejected promise.
+    const hiddenModelsByModality = new Map<string, Map<string, Set<string>>>();
+    const getHiddenModelsForModality = (modality: string): Map<string, Set<string>> => {
+      let m = hiddenModelsByModality.get(modality);
+      if (!m) {
+        m = getHiddenModelsByProvider(modality);
+        hiddenModelsByModality.set(modality, m);
+      }
+      return m;
+    };
     let settings: Record<string, any> = {};
     try {
       settings = await getSettings();
@@ -428,7 +432,8 @@ async function buildUnifiedModelsResponseCore(
     const isModelHiddenBulk = (
       providerKey: string | null | undefined,
       modelId: string,
-      canonicalProviderId?: string | null
+      canonicalProviderId?: string | null,
+      modality: string = "chat"
     ): boolean => {
       if (!providerKey || !modelId) return false;
       const canonical = canonicalProviderId || resolveCanonicalProviderId(providerKey);
@@ -437,8 +442,9 @@ async function buildUnifiedModelsResponseCore(
       const keysToCheck = [providerKey, canonical, alias, nodePrefix].filter((k): k is string =>
         Boolean(k)
       );
+      const hiddenModelsForModality = getHiddenModelsForModality(modality);
       for (const key of keysToCheck) {
-        const hiddenSet = hiddenModelsByProvider.get(key);
+        const hiddenSet = hiddenModelsForModality.get(key);
         if (hiddenSet?.has(modelId)) return true;
       }
       return false;
@@ -1467,7 +1473,7 @@ async function buildUnifiedModelsResponseCore(
       if (!isProviderActive(embModel.provider)) continue;
       const rawModelId = getSpecialtyModelRelativeId(embModel.id, embModel.provider);
       if (!providerSupportsModel(embModel.provider, rawModelId)) continue;
-      if (isModelHiddenBulk(embModel.provider, rawModelId)) continue;
+      if (isModelHiddenBulk(embModel.provider, rawModelId, null, "embeddings")) continue;
       const existingEmbedding = findEquivalentSpecialtyModel(
         embModel.provider,
         rawModelId,
@@ -1510,7 +1516,7 @@ async function buildUnifiedModelsResponseCore(
       if (!isProviderActive(imgModel.provider)) continue;
       const rawModelId = getSpecialtyModelRelativeId(imgModel.id, imgModel.provider);
       if (!providerSupportsModel(imgModel.provider, rawModelId)) continue;
-      if (isModelHiddenBulk(imgModel.provider, rawModelId)) continue;
+      if (isModelHiddenBulk(imgModel.provider, rawModelId, null, "images")) continue;
       models.push({
         id: imgModel.id,
         object: "model",
@@ -1530,7 +1536,7 @@ async function buildUnifiedModelsResponseCore(
       if (!isProviderActive(rerankModel.provider)) continue;
       const rawModelId = getSpecialtyModelRelativeId(rerankModel.id, rerankModel.provider);
       if (!providerSupportsModel(rerankModel.provider, rawModelId)) continue;
-      if (isModelHiddenBulk(rerankModel.provider, rawModelId)) continue;
+      if (isModelHiddenBulk(rerankModel.provider, rawModelId, null, "rerank")) continue;
       if (hasEquivalentSpecialtyModel(rerankModel.provider, rawModelId, "rerank", rerankModel.id)) {
         continue;
       }
@@ -1549,7 +1555,7 @@ async function buildUnifiedModelsResponseCore(
       if (!isProviderActive(audioModel.provider)) continue;
       const rawModelId = getSpecialtyModelRelativeId(audioModel.id, audioModel.provider);
       if (!providerSupportsModel(audioModel.provider, rawModelId)) continue;
-      if (isModelHiddenBulk(audioModel.provider, rawModelId)) continue;
+      if (isModelHiddenBulk(audioModel.provider, rawModelId, null, "audio")) continue;
       models.push({
         id: audioModel.id,
         object: "model",
@@ -1565,7 +1571,7 @@ async function buildUnifiedModelsResponseCore(
       if (!isProviderActive(modModel.provider)) continue;
       const rawModelId = getSpecialtyModelRelativeId(modModel.id, modModel.provider);
       if (!providerSupportsModel(modModel.provider, rawModelId)) continue;
-      if (isModelHiddenBulk(modModel.provider, rawModelId)) continue;
+      if (isModelHiddenBulk(modModel.provider, rawModelId, null, "moderation")) continue;
       models.push({
         id: modModel.id,
         object: "model",
@@ -1580,7 +1586,7 @@ async function buildUnifiedModelsResponseCore(
       if (!isProviderActive(videoModel.provider)) continue;
       const rawModelId = getSpecialtyModelRelativeId(videoModel.id, videoModel.provider);
       if (!providerSupportsModel(videoModel.provider, rawModelId)) continue;
-      if (isModelHiddenBulk(videoModel.provider, rawModelId)) continue;
+      if (isModelHiddenBulk(videoModel.provider, rawModelId, null, "videos")) continue;
       models.push({
         id: videoModel.id,
         object: "model",
@@ -1601,7 +1607,7 @@ async function buildUnifiedModelsResponseCore(
       if (!isProviderActive(musicModel.provider)) continue;
       const rawModelId = getSpecialtyModelRelativeId(musicModel.id, musicModel.provider);
       if (!providerSupportsModel(musicModel.provider, rawModelId)) continue;
-      if (isModelHiddenBulk(musicModel.provider, rawModelId)) continue;
+      if (isModelHiddenBulk(musicModel.provider, rawModelId, null, "music")) continue;
       models.push({
         id: musicModel.id,
         object: "model",

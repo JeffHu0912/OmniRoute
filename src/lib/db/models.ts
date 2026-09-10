@@ -28,6 +28,8 @@ import {
   isCompatProtocolKey,
   sanitizeUpstreamHeadersMap,
   removeModelCompatOverride,
+  mergeModelCompatOverride,
+  isOverrideHiddenForModality,
   type CompatByProtocolMap,
   type ModelCompatProtocolKey,
   type ModelCompatOverride,
@@ -975,22 +977,30 @@ export function getModelPreserveOpenAIDeveloperRole(
 
 /**
  * Check if the model is flagged as hidden from the public catalog.
+ * `modality` (default "chat") scopes the check to one endpoint/registry — see
+ * {@link isOverrideHiddenForModality} — so an identically-ID'd model in a different
+ * modality's registry (e.g. Chat vs Image, #12172) is not silently suppressed too.
  */
-export function getModelIsHidden(providerId: string, modelId: string): boolean {
+export function getModelIsHidden(
+  providerId: string,
+  modelId: string,
+  modality: string = "chat"
+): boolean {
   const m = getCustomModelRow(providerId, modelId);
   if (m && Object.prototype.hasOwnProperty.call(m, "isHidden")) {
     return Boolean(m.isHidden);
   }
   const co = readCompatList(providerId).find((e) => e.id === modelId);
-  return Boolean(co?.isHidden);
+  return isOverrideHiddenForModality(co, modality);
 }
 
 /**
  * Get a map of provider ID → set of hidden model IDs from all modelCompatOverrides
- * and customModels. Used by auto-combo candidate building to skip user-hidden models.
- * Single bulk DB query — not N+1 per model.
+ * and customModels, scoped to one `modality` (default "chat", matching every
+ * pre-#12172 caller's original chat-only intent). Used by auto-combo candidate
+ * building to skip user-hidden models. Single bulk DB query — not N+1 per model.
  */
-export function getHiddenModelsByProvider(): Map<string, Set<string>> {
+export function getHiddenModelsByProvider(modality: string = "chat"): Map<string, Set<string>> {
   const db = getDbInstance();
   const visibilityByProvider = new Map<string, Map<string, boolean>>();
   const rows = db
@@ -1009,13 +1019,33 @@ export function getHiddenModelsByProvider(): Map<string, Set<string>> {
           if (!entry || typeof entry !== "object") continue;
           const modelId = (entry as { id?: unknown }).id;
           if (typeof modelId !== "string" || modelId.length === 0) continue;
-          if (!Object.prototype.hasOwnProperty.call(entry, "isHidden")) continue;
+          const record = entry as { isHidden?: unknown; hiddenModalities?: unknown };
+          const hasHiddenInfo =
+            Object.prototype.hasOwnProperty.call(record, "isHidden") ||
+            (namespace === "modelCompatOverrides" &&
+              record.hiddenModalities &&
+              typeof record.hiddenModalities === "object");
+          if (!hasHiddenInfo) continue;
+          // #12172: customModels rows have no modality scope (single user-managed
+          // entry) — legacy global isHidden applies to every modality unchanged.
+          const isHidden =
+            namespace === "modelCompatOverrides"
+              ? isOverrideHiddenForModality(
+                  {
+                    isHidden: Boolean(record.isHidden),
+                    hiddenModalities: record.hiddenModalities as
+                      | Record<string, boolean>
+                      | undefined,
+                  },
+                  modality
+                )
+              : Boolean(record.isHidden);
           let visibility = visibilityByProvider.get(row.key);
           if (!visibility) {
             visibility = new Map<string, boolean>();
             visibilityByProvider.set(row.key, visibility);
           }
-          visibility.set(modelId, Boolean((entry as { isHidden?: unknown }).isHidden));
+          visibility.set(modelId, isHidden);
         }
       } catch {
         // Skip malformed entries
@@ -1038,7 +1068,12 @@ export function getHiddenModelsByProvider(): Map<string, Set<string>> {
  * row when one exists, otherwise on the compat-override list. Setting
  * `hidden = false` is a no-op when the model is already visible.
  */
-export function setModelIsHidden(providerId: string, modelId: string, hidden: boolean): void {
+export function setModelIsHidden(
+  providerId: string,
+  modelId: string,
+  hidden: boolean,
+  modality?: string
+): void {
   const customRow = getCustomModelRow(providerId, modelId);
   if (customRow) {
     if (hidden) {
@@ -1046,6 +1081,14 @@ export function setModelIsHidden(providerId: string, modelId: string, hidden: bo
     } else if (Object.prototype.hasOwnProperty.call(customRow, "isHidden")) {
       updateCustomModel(providerId, modelId, { isHidden: false });
     }
+    return;
+  }
+
+  // #12172: a modality-scoped write never touches the legacy all-modalities
+  // `isHidden` flag — it only sets/clears that one modality's override, so an
+  // identically-ID'd model in a different modality's registry is unaffected.
+  if (modality) {
+    mergeModelCompatOverride(providerId, modelId, { isHidden: hidden, modality });
     return;
   }
 
