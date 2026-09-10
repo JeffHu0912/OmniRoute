@@ -1440,6 +1440,7 @@ Containerized Chromium+VNC used for interactive browser-login credential capture
 | `OMNIROUTE_VNC_READY_MS` | `45000` | `src/lib/vncSession/manifest.ts` | Timeout (ms) waiting for the containerized browser to become CDP-ready. |
 | `OMNIROUTE_VNC_HARVEST_MS` | `20000` | `src/lib/vncSession/manifest.ts` | Timeout (ms) for harvesting the captured session/cookies after login completes. |
 | `OMNIROUTE_VNC_CHROMIUM_ARGS` | `--remote-debugging-port=9222 --no-first-run --no-default-browser-check` | `src/lib/vncSession/manifest.ts` | Extra command-line flags passed to the containerized Chromium. |
+| `OMNIROUTE_VNC_NETWORK` | `omniroute-vnc-browser-login` | `src/lib/vncSession/manifest.ts` | Dedicated Docker network the VNC login container joins (#12571) instead of the default bridge, so sibling containers can't reach its CDP bridge port. |
 | `VIBEPROXY_DATA_DIR` | _(unset)_ | `open-sse/services/notionThreadSessions.ts` | **Legacy alias** for `DATA_DIR`, checked only after both `DATA_DIR` and `OMNIROUTE_DATA_DIR` are unset. Locates the Notion web-thread session cache (`<dir>/notion-web-thread-sessions.json`). |
 
 ---
@@ -1578,6 +1579,7 @@ Used by `src/lib/vncSession/manifest.ts` to configure Docker-based headless Chro
 | `OMNIROUTE_VNC_MAX_SESSIONS`          | `4`                           | `src/lib/vncSession/manifest.ts`  | Maximum concurrent VNC sessions.                                               |
 | `OMNIROUTE_VNC_READY_MS`              | `45000`                       | `src/lib/vncSession/manifest.ts`  | Browser readiness timeout (ms).                                                |
 | `OMNIROUTE_VNC_HARVEST_MS`            | `20000`                       | `src/lib/vncSession/manifest.ts`  | Harvest/cleanup timeout (ms).                                                  |
+| `OMNIROUTE_VNC_NETWORK`               | `omniroute-vnc-browser-login` | `src/lib/vncSession/manifest.ts`  | Dedicated Docker network the container joins (#12571), off the default bridge. |
 | `VIBEPROXY_DATA_DIR`                  | _(unset)_                     | `open-sse/services/notionThreadSessions.ts` | Directory for Notion thread session persistence.                               |
 
 ### Internal service auth
