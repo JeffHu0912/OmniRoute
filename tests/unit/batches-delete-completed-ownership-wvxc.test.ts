@@ -139,6 +139,15 @@ describe("deleteCompletedBatches — ownership boundary (GHSA-wvxc-jp3v-5mg5)", 
         }),
       /apiKeyId required unless allTenants/
     );
+    assert.throws(
+      // A mixed scope must be rejected, never silently widened to the instance.
+      () =>
+        (deleteCompletedBatches as unknown as (s: unknown) => unknown)({
+          apiKeyId: "key_survivor_wvxc",
+          allTenants: true,
+        }),
+      /mutually exclusive/
+    );
 
     assert.ok(getBatch(survivor.batch.id), "a rejected call must not delete anything");
     assert.strictEqual(

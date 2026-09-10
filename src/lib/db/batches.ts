@@ -452,6 +452,9 @@ export function deleteCompletedBatches(scope: DeleteCompletedBatchesScope): {
   if (!allTenants && !apiKeyId) {
     throw new Error("deleteCompletedBatches: apiKeyId required unless allTenants");
   }
+  if (allTenants && apiKeyId) {
+    throw new Error("deleteCompletedBatches: apiKeyId and allTenants are mutually exclusive");
+  }
 
   const db = getDbInstance();
 

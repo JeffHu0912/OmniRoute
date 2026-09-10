@@ -112,16 +112,12 @@ describe("DELETE /api/v1/batches/delete-completed — caller scope (GHSA-wvxc-jp
     assert.ok(getBatch(victim.batch.id), "key B's batch still survives");
   });
 
-  it("a dashboard session sweeps the whole instance — even when the request also carries an API key", async () => {
-    const keyA = await createApiKey("wvxc-route-session-a", "machine-wvxc-sa", []);
+  it("a dashboard session WITHOUT a key sweeps the whole instance", async () => {
     const keyB = await createApiKey("wvxc-route-session-b", "machine-wvxc-sb", []);
     const other = seedCompletedBatch(keyB.id, "wvxc-route-session-other");
     const unowned = seedCompletedBatch(null, "wvxc-route-session-unowned");
 
-    const { res, body } = await callDelete({
-      Authorization: `Bearer ${keyA.key}`,
-      cookie: await sessionCookie(),
-    });
+    const { res, body } = await callDelete({ cookie: await sessionCookie() });
 
     assert.strictEqual(res.status, 200);
     assert.ok(
@@ -131,6 +127,33 @@ describe("DELETE /api/v1/batches/delete-completed — caller scope (GHSA-wvxc-jp
     assert.strictEqual(getBatch(other.batch.id), null, "session sweep removes another key's batch");
     assert.strictEqual(getBatch(unowned.batch.id), null, "session sweep removes the unowned batch");
     assert.strictEqual(getFile(other.file.id), null, "session sweep soft-deletes the files too");
+  });
+
+  it("a request carrying BOTH a session cookie and an API key is scoped to the key (the key wins, like GET /v1/batches)", async () => {
+    const keyA = await createApiKey("wvxc-route-both-a", "machine-wvxc-ba", []);
+    const keyB = await createApiKey("wvxc-route-both-b", "machine-wvxc-bb", []);
+    const own = seedCompletedBatch(keyA.id, "wvxc-route-both-own");
+    const other = seedCompletedBatch(keyB.id, "wvxc-route-both-other");
+    const unowned = seedCompletedBatch(null, "wvxc-route-both-unowned");
+
+    const { res, body } = await callDelete({
+      Authorization: `Bearer ${keyA.key}`,
+      cookie: await sessionCookie(),
+    });
+
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(body.deletedBatches, 1, "only key A's own completed batch is swept");
+    assert.strictEqual(getBatch(own.batch.id), null, "key A's own batch is swept");
+    assert.ok(
+      getBatch(other.batch.id),
+      "key B's batch survives — a presented key never widens the sweep"
+    );
+    assert.ok(getBatch(unowned.batch.id), "the unowned batch survives a key-scoped sweep");
+    assert.strictEqual(
+      getFileContent(other.file.id)?.toString(),
+      "wvxc-route-both-other",
+      "key B's file content is intact"
+    );
   });
 
   it("rejects an unauthenticated request with 401 and deletes nothing", async () => {

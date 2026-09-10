@@ -15,24 +15,28 @@ export async function DELETE(request: Request) {
   const scope = await getApiKeyRequestScope(request);
   if (scope.rejection) return scope.rejection;
 
-  // Only an authenticated dashboard session sweeps the whole instance. Every
-  // other caller is an inference key and only sweeps its own completed batches,
-  // like the list/count siblings do — otherwise an ordinary key would delete
-  // every tenant's completed batches and null out their file contents
+  // A presented API key always scopes the sweep to that key — even when the
+  // request also carries a dashboard session cookie — exactly like the
+  // list/count siblings (`apiKeyId || undefined`), so a leaked or over-shared
+  // key can never widen a destructive sweep. Only a dashboard session WITHOUT a
+  // key sweeps the whole instance; otherwise an ordinary key would delete every
+  // tenant's completed batches and null out their file contents
   // (GHSA-wvxc-jp3v-5mg5). A caller that is neither gets 401; there is no
   // fallback that silently widens the sweep.
   let sweepScope: DeleteCompletedBatchesScope;
-  if (scope.isSessionAuth) {
-    sweepScope = { allTenants: true };
-  } else if (scope.apiKeyId) {
+  let mode: "instance" | "api_key";
+  if (scope.apiKeyId) {
     sweepScope = { apiKeyId: scope.apiKeyId };
+    mode = "api_key";
+  } else if (scope.isSessionAuth) {
+    sweepScope = { allTenants: true };
+    mode = "instance";
   } else {
     return NextResponse.json(
       { error: { message: "Authentication required", type: "invalid_request_error" } },
       { status: 401, headers: CORS_HEADERS }
     );
   }
-  const mode: "instance" | "api_key" = scope.isSessionAuth ? "instance" : "api_key";
 
   let result: ReturnType<typeof deleteCompletedBatches>;
   try {
@@ -42,7 +46,7 @@ export async function DELETE(request: Request) {
       route: LOG_ROUTE,
       mode,
       apiKeyId: scope.apiKeyId,
-      error: err instanceof Error ? err.message : String(err),
+      error: err instanceof Error ? { message: err.message, stack: err.stack } : String(err),
     });
     return NextResponse.json(buildErrorBody(500, "Failed to delete completed batches"), {
       status: 500,
@@ -57,11 +61,13 @@ export async function DELETE(request: Request) {
     deletedBatches: result.deletedBatches,
     deletedFiles: result.deletedFiles,
   };
-  if (mode === "instance") {
-    log.warn("BATCHES", "instance-wide completed-batch sweep", audit);
-  } else {
-    log.info("BATCHES", "completed-batch sweep", audit);
-  }
+  // A bulk delete is an audit event, not routine chatter: both modes log at
+  // warn so the trail survives APP_LOG_LEVEL=warn.
+  log.warn(
+    "BATCHES",
+    mode === "instance" ? "instance-wide completed-batch sweep" : "completed-batch sweep",
+    audit
+  );
 
   return NextResponse.json(
     { deleted: true, deletedBatches: result.deletedBatches, deletedFiles: result.deletedFiles },
