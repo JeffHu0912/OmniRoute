@@ -14004,7 +14004,18 @@
     "actionDone": "Dejanje je bilo izvedeno",
     "actionFailed": "Dejanje ni uspelo: {error}",
     "detailFailed": "Podrobnosti ni bilo mogoče naložiti: {error}",
-    "mirroredInA2A": "Zrcaljeno v A2A"
+    "mirroredInA2A": "Zrcaljeno v A2A",
+    "compareMode": "Primerjaj izvajanja",
+    "compareExit": "Izhod iz načina primerjave",
+    "compareHint": "Izberite dve izvajanji za primerjavo",
+    "compareTitle": "Primerjava",
+    "compareDetailFailed": "Podrobnosti tega izvajanja ni bilo mogoče naložiti",
+    "compareDifferentIdentity": "Različni viri ali zmožnosti — razlike so informativne",
+    "compareDuration": "Trajanje",
+    "compareCost": "Strošek",
+    "compareEvents": "Dogodki",
+    "compareDeltaLegend": "Δ desno − levo",
+    "noMatches": "Nobeno izvajanje ne ustreza tem filtrom"
   },
   "cliproxyProviderExposure": {
     "title": "Dostopnost ponudnika",

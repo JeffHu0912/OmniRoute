@@ -14004,7 +14004,18 @@
     "actionDone": "Radnja primijenjena",
     "actionFailed": "Radnja nije uspjela: {error}",
     "detailFailed": "Učitavanje detalja nije uspjelo: {error}",
-    "mirroredInA2A": "Zrcaljeno u A2A"
+    "mirroredInA2A": "Zrcaljeno u A2A",
+    "compareMode": "Usporedi izvođenja",
+    "compareExit": "Izađi iz načina usporedbe",
+    "compareHint": "Odaberite dva izvođenja za usporedbu",
+    "compareTitle": "Usporedba",
+    "compareDetailFailed": "Nije moguće učitati pojedinosti ovog izvođenja",
+    "compareDifferentIdentity": "Različiti izvori ili vještine — razlike su informativne",
+    "compareDuration": "Trajanje",
+    "compareCost": "Trošak",
+    "compareEvents": "Događaji",
+    "compareDeltaLegend": "Δ desno − lijevo",
+    "noMatches": "Nijedno izvođenje ne odgovara ovim filtrima"
   },
   "cliproxyProviderExposure": {
     "title": "Izloženost pružatelja",

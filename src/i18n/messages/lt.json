@@ -14004,7 +14004,18 @@
     "actionDone": "Veiksmas pritaikytas",
     "actionFailed": "Veiksmas nepavyko: {error}",
     "detailFailed": "Nepavyko įkelti išsamios informacijos: {error}",
-    "mirroredInA2A": "Dubliuojama A2A sistemoje"
+    "mirroredInA2A": "Dubliuojama A2A sistemoje",
+    "compareMode": "Palyginti vykdymus",
+    "compareExit": "Išeiti iš palyginimo režimo",
+    "compareHint": "Pasirinkite du vykdymus palyginimui",
+    "compareTitle": "Palyginimas",
+    "compareDetailFailed": "Nepavyko įkelti šio vykdymo informacijos",
+    "compareDifferentIdentity": "Skirtingi šaltiniai arba gebėjimai — skirtumai yra informaciniai",
+    "compareDuration": "Trukmė",
+    "compareCost": "Kaina",
+    "compareEvents": "Įvykiai",
+    "compareDeltaLegend": "Δ dešinė − kairė",
+    "noMatches": "Nė vienas vykdymas neatitinka šių filtrų"
   },
   "cliproxyProviderExposure": {
     "title": "Teikėjo prieinamumas",

@@ -14004,7 +14004,18 @@
     "actionDone": "Darbība izpildīta",
     "actionFailed": "Darbība neizdevās: {error}",
     "detailFailed": "Neizdevās ielādēt detalizētu informāciju: {error}",
-    "mirroredInA2A": "Atspoguļots A2A"
+    "mirroredInA2A": "Atspoguļots A2A",
+    "compareMode": "Salīdzināt izpildes",
+    "compareExit": "Iziet no salīdzināšanas režīma",
+    "compareHint": "Atlasiet divas izpildes salīdzināšanai",
+    "compareTitle": "Salīdzinājums",
+    "compareDetailFailed": "Neizdevās ielādēt šīs izpildes informāciju",
+    "compareDifferentIdentity": "Dažādi avoti vai prasmes — atšķirības ir informatīvas",
+    "compareDuration": "Ilgums",
+    "compareCost": "Izmaksas",
+    "compareEvents": "Notikumi",
+    "compareDeltaLegend": "Δ labā − kreisā",
+    "noMatches": "Neviena izpilde neatbilst šiem filtriem"
   },
   "cliproxyProviderExposure": {
     "title": "Pakalpojumu sniedzēju eksponēšana",

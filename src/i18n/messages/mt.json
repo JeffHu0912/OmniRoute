@@ -14004,7 +14004,18 @@
     "actionDone": "Azzjoni applikata",
     "actionFailed": "L-azzjoni falliet: {error}",
     "detailFailed": "Ma rnexxiex jittella' d-dettalji: {error}",
-    "mirroredInA2A": "Rifless f'A2A"
+    "mirroredInA2A": "Rifless f'A2A",
+    "compareMode": "Qabbel it-tħaddim",
+    "compareExit": "Oħroġ mill-modalità ta’ tqabbil",
+    "compareHint": "Agħżel żewġ tħaddimiet biex tqabbel",
+    "compareTitle": "Tqabbil",
+    "compareDetailFailed": "Ma setgħux jitniżżlu d-dettalji ta’ dan it-tħaddim",
+    "compareDifferentIdentity": "Sorsi jew ħiliet differenti — id-differenzi huma informattivi",
+    "compareDuration": "Tul",
+    "compareCost": "Spiża",
+    "compareEvents": "Avvenimenti",
+    "compareDeltaLegend": "Δ lemin − xellug",
+    "noMatches": "L-ebda tħaddim ma jaqbel ma’ dawn il-filtri"
   },
   "cliproxyProviderExposure": {
     "title": "Espożizzjoni tal-Fornitur",

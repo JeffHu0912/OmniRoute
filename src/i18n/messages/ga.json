@@ -14004,7 +14004,18 @@
     "actionDone": "Gníomh curtha i bhfeidhm",
     "actionFailed": "Theip ar an ngníomh: {error}",
     "detailFailed": "Theip ar lódáil sonraí: {error}",
-    "mirroredInA2A": "Scáththa in A2A"
+    "mirroredInA2A": "Scáththa in A2A",
+    "compareMode": "Cuir rití i gcomparáid",
+    "compareExit": "Scoir den mhód comparáide",
+    "compareHint": "Roghnaigh dhá rith le cur i gcomparáid",
+    "compareTitle": "Comparáid",
+    "compareDetailFailed": "Níorbh fhéidir sonraí an rith seo a lódáil",
+    "compareDifferentIdentity": "Foinsí nó scileanna éagsúla — is eolas amháin iad na difríochtaí",
+    "compareDuration": "Fad",
+    "compareCost": "Costas",
+    "compareEvents": "Imeachtaí",
+    "compareDeltaLegend": "Δ ar dheis − ar chlé",
+    "noMatches": "Níl aon rith ag teacht leis na scagairí seo"
   },
   "cliproxyProviderExposure": {
     "title": "Nochtadh Soláthraí",

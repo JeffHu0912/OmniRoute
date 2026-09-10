@@ -14004,7 +14004,18 @@
     "actionDone": "Η ενέργεια εφαρμόστηκε",
     "actionFailed": "Αποτυχία ενέργειας: {error}",
     "detailFailed": "Αποτυχία φόρτωσης λεπτομερειών: {error}",
-    "mirroredInA2A": "Αντικατοπτρίστηκε στο A2A"
+    "mirroredInA2A": "Αντικατοπτρίστηκε στο A2A",
+    "compareMode": "Σύγκριση εκτελέσεων",
+    "compareExit": "Έξοδος από τη σύγκριση",
+    "compareHint": "Επιλέξτε δύο εκτελέσεις για σύγκριση",
+    "compareTitle": "Σύγκριση",
+    "compareDetailFailed": "Δεν ήταν δυνατή η φόρτωση των λεπτομερειών αυτής της εκτέλεσης",
+    "compareDifferentIdentity": "Διαφορετικές πηγές ή δεξιότητες — οι διαφορές είναι ενημερωτικές",
+    "compareDuration": "Διάρκεια",
+    "compareCost": "Κόστος",
+    "compareEvents": "Συμβάντα",
+    "compareDeltaLegend": "Δ δεξιά − αριστερά",
+    "noMatches": "Καμία εκτέλεση δεν ταιριάζει με αυτά τα φίλτρα"
   },
   "cliproxyProviderExposure": {
     "title": "Έκθεση Παρόχου",

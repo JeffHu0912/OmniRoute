@@ -14004,7 +14004,18 @@
     "actionDone": "Радња примењена",
     "actionFailed": "Радња није успела: {error}",
     "detailFailed": "Учитавање детаља није успело: {error}",
-    "mirroredInA2A": "Одражено у A2A"
+    "mirroredInA2A": "Одражено у A2A",
+    "compareMode": "Упореди извршавања",
+    "compareExit": "Изађи из режима поређења",
+    "compareHint": "Изаберите два извршавања за поређење",
+    "compareTitle": "Поређење",
+    "compareDetailFailed": "Није могуће учитати детаље овог извршавања",
+    "compareDifferentIdentity": "Различити извори или вештине — разлике су информативне",
+    "compareDuration": "Трајање",
+    "compareCost": "Трошак",
+    "compareEvents": "Догађаји",
+    "compareDeltaLegend": "Δ десно − лево",
+    "noMatches": "Ниједно извршавање не одговара овим филтерима"
   },
   "cliproxyProviderExposure": {
     "title": "Изложеност провајдера",
