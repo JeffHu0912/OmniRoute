@@ -2710,7 +2710,7 @@
     "ccOnboardingTitle": "settings.json skirtas šliuzo modelių aptikimui",
     "ccOnboardingCopy": "Kopijuoti",
     "ccOnboardingCopied": "Nukopijuota",
-    "ccOnboardingKeyPlaceholder": "<jūsų OmniRoute API raktas>",
+    "ccOnboardingKeyPlaceholder": "'<jūsų OmniRoute API raktas>'",
     "ccOnboardingWindowNote": "Claude Code numato 200K kontekstinį langą kiekvienam neatpažintam modelio ID. Jei modelio tikrasis langas kitoks, pridėkite CLAUDE_CODE_AUTO_COMPACT_WINDOW tuoj po jo, kad automatinis glaudinimas neįsijungtų per anksti.",
     "failedSave": "Nepavyko išsaugoti",
     "profileSyncTitle": "Automatinis CLI profilių sinchronizavimas",
@@ -12968,7 +12968,7 @@
         "description": "Sinchronizavus teikėjų modelius, iš naujo sugeneruoti ~/.codex/*.config.toml profilius pagal aktualų katalogą. Tai niekada nepakeičia aktyvios ar numatytosios Codex konfigūracijos ir pagal numatytuosius nustatymus yra išjungta."
       },
       "OMNIROUTE_AUTO_SYNC_CLAUDE_PROFILES": {
-        "description": "Sinchronizavus teikėjų modelius, iš naujo sugeneruoti ~/.claude/profiles/<name>/settings.json profilius pagal aktualų katalogą. Tai niekada nepakeičia aktyvios ar numatytosios Claude konfigūracijos ir pagal numatytuosius nustatymus yra išjungta."
+        "description": "Sinchronizavus teikėjų modelius, iš naujo sugeneruoti ~/.claude/profiles/'<name>'/settings.json profilius pagal aktualų katalogą. Tai niekada nepakeičia aktyvios ar numatytosios Claude konfigūracijos ir pagal numatytuosius nustatymus yra išjungta."
       },
       "OMNIROUTE_DISABLE_LOCAL_HEALTHCHECK": {
         "description": "Išjungti vietinio egzemplioriaus būklės patikros galinį tašką."

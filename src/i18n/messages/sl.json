@@ -2710,7 +2710,7 @@
     "ccOnboardingTitle": "settings.json za odkrivanje modelov prehoda",
     "ccOnboardingCopy": "Kopiraj",
     "ccOnboardingCopied": "Kopirano",
-    "ccOnboardingKeyPlaceholder": "<vaš ključ API za OmniRoute>",
+    "ccOnboardingKeyPlaceholder": "'<vaš ključ API za OmniRoute>'",
     "ccOnboardingWindowNote": "Claude Code za vsak ID modela, ki ga ne prepozna, predpostavlja kontekstno okno 200K. Za model z drugačnim dejanskim oknom tik pod njim dodajte CLAUDE_CODE_AUTO_COMPACT_WINDOW, da se samodejno zgoščevanje ne sproži prezgodaj.",
     "failedSave": "Shranjevanje ni uspelo",
     "profileSyncTitle": "Samodejna sinhronizacija profilov CLI",
@@ -12968,7 +12968,7 @@
         "description": "Po sinhronizaciji ponudnikov in modelov znova ustvari profile ~/.codex/*.config.toml iz kataloga v živo. To nikoli ne spremeni aktivne ali privzete konfiguracije Codex in je privzeto izklopljeno."
       },
       "OMNIROUTE_AUTO_SYNC_CLAUDE_PROFILES": {
-        "description": "Po sinhronizaciji ponudnikov in modelov znova ustvari profile ~/.claude/profiles/<name>/settings.json iz kataloga v živo. To nikoli ne spremeni aktivne ali privzete konfiguracije Claude in je privzeto izklopljeno."
+        "description": "Po sinhronizaciji ponudnikov in modelov znova ustvari profile ~/.claude/profiles/'<name>'/settings.json iz kataloga v živo. To nikoli ne spremeni aktivne ali privzete konfiguracije Claude in je privzeto izklopljeno."
       },
       "OMNIROUTE_DISABLE_LOCAL_HEALTHCHECK": {
         "description": "Onemogoči končno točko za preverjanje stanja lokalnega primerka."

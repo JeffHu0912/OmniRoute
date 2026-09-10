@@ -2710,7 +2710,7 @@
     "ccOnboardingTitle": "settings.json za otkrivanje modela pristupnika",
     "ccOnboardingCopy": "Kopiraj",
     "ccOnboardingCopied": "Kopirano",
-    "ccOnboardingKeyPlaceholder": "<vaš OmniRoute API ključ>",
+    "ccOnboardingKeyPlaceholder": "'<vaš OmniRoute API ključ>'",
     "ccOnboardingWindowNote": "Claude Code pretpostavlja kontekstni prozor od 200K za bilo koji ID modela koji ne prepoznaje. Za model s drugačijim stvarnim prozorom, dodajte CLAUDE_CODE_AUTO_COMPACT_WINDOW odmah ispod njega kako automatsko sažimanje ne bi pokrenulo prerano.",
     "failedSave": "Spremanje nije uspjelo",
     "profileSyncTitle": "Automatska sinkronizacija CLI profila",
@@ -12968,7 +12968,7 @@
         "description": "Nakon sinkronizacije davatelja usluga i modela, regeneriraj profile ~/.codex/*.config.toml iz živog kataloga. Ovo nikada ne mijenja aktivnu ili zadanu Codex konfiguraciju i prema zadanim postavkama je isključeno."
       },
       "OMNIROUTE_AUTO_SYNC_CLAUDE_PROFILES": {
-        "description": "Nakon sinkronizacije davatelja usluga i modela, regeneriraj profile ~/.claude/profiles/<name>/settings.json iz živog kataloga. Ovo nikada ne mijenja aktivnu ili zadanu Claude konfiguraciju i prema zadanim postavkama je isključeno."
+        "description": "Nakon sinkronizacije davatelja usluga i modela, regeneriraj profile ~/.claude/profiles/'<name>'/settings.json iz živog kataloga. Ovo nikada ne mijenja aktivnu ili zadanu Claude konfiguraciju i prema zadanim postavkama je isključeno."
       },
       "OMNIROUTE_DISABLE_LOCAL_HEALTHCHECK": {
         "description": "Onemogući lokalni krajnji punkt za provjeru stanja instance."

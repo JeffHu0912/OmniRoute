@@ -2710,7 +2710,7 @@
     "ccOnboardingTitle": "settings.json għall-iskoperta tal-mudelli tal-gateway",
     "ccOnboardingCopy": "Ikkopja",
     "ccOnboardingCopied": "Ikkupjat",
-    "ccOnboardingKeyPlaceholder": "<iċ-ċavetta tal-API ta’ OmniRoute tiegħek>",
+    "ccOnboardingKeyPlaceholder": "'<iċ-ċavetta tal-API ta’ OmniRoute tiegħek>'",
     "ccOnboardingWindowNote": "Claude Code jassumi tieqa tal-kuntest ta’ 200K għal kwalunkwe ID ta’ mudell li ma jagħrafx. Għal mudell b’tieqa reali differenti, żid CLAUDE_CODE_AUTO_COMPACT_WINDOW direttament taħtu sabiex il-kompattazzjoni awtomatika ma tibdiex kmieni wisq.",
     "failedSave": "Ma rnexxilux is-salvataġġ",
     "profileSyncTitle": "Sinkronizzazzjoni awtomatika tal-profili tas-CLI",
@@ -12968,7 +12968,7 @@
         "description": "Wara s-sinkronizzazzjoni bejn il-fornituri u l-mudelli, iġġenera mill-ġdid il-profili ~/.codex/*.config.toml mill-katalgu attwali. Dan qatt ma jbiddel il-konfigurazzjoni Codex attiva jew predefinita u huwa diżattivat awtomatikament."
       },
       "OMNIROUTE_AUTO_SYNC_CLAUDE_PROFILES": {
-        "description": "Wara s-sinkronizzazzjoni bejn il-fornituri u l-mudelli, iġġenera mill-ġdid il-profili ~/.claude/profiles/<name>/settings.json mill-katalgu attwali. Dan qatt ma jbiddel il-konfigurazzjoni Claude attiva jew predefinita u huwa diżattivat awtomatikament."
+        "description": "Wara s-sinkronizzazzjoni bejn il-fornituri u l-mudelli, iġġenera mill-ġdid il-profili ~/.claude/profiles/'<name>'/settings.json mill-katalgu attwali. Dan qatt ma jbiddel il-konfigurazzjoni Claude attiva jew predefinita u huwa diżattivat awtomatikament."
       },
       "OMNIROUTE_DISABLE_LOCAL_HEALTHCHECK": {
         "description": "Iddiżattiva l-endpoint tal-kontroll tas-saħħa tal-istanza lokali."

@@ -2710,7 +2710,7 @@
     "ccOnboardingTitle": "settings.json lüüsi mudelite tuvastamiseks",
     "ccOnboardingCopy": "Kopeeri",
     "ccOnboardingCopied": "Kopeeritud",
-    "ccOnboardingKeyPlaceholder": "<teie OmniRoute'i API-võti>",
+    "ccOnboardingKeyPlaceholder": "'<teie OmniRoute''i API-võti>'",
     "ccOnboardingWindowNote": "Claude Code eeldab iga tundmatu mudeli-ID puhul 200K kontekstiakent. Kui mudeli tegelik aken on teistsugune, lisage kohe selle alla CLAUDE_CODE_AUTO_COMPACT_WINDOW, et automaatne tihendamine ei käivituks liiga vara.",
     "failedSave": "Salvestamine ebaõnnestus",
     "profileSyncTitle": "CLI-profiilide automaatne sünkroonimine",
@@ -12968,7 +12968,7 @@
         "description": "Pärast teenusepakkujate ja mudelite sünkroonimist loo profiilid ~/.codex/*.config.toml aktiivse kataloogi põhjal uuesti. See ei muuda kunagi Codex aktiivset ega vaikekonfiguratsiooni ning on vaikimisi välja lülitatud."
       },
       "OMNIROUTE_AUTO_SYNC_CLAUDE_PROFILES": {
-        "description": "Pärast teenusepakkujate ja mudelite sünkroonimist loo profiilid ~/.claude/profiles/<name>/settings.json aktiivse kataloogi põhjal uuesti. See ei muuda kunagi Claude aktiivset ega vaikekonfiguratsiooni ning on vaikimisi välja lülitatud."
+        "description": "Pärast teenusepakkujate ja mudelite sünkroonimist loo profiilid ~/.claude/profiles/'<name>'/settings.json aktiivse kataloogi põhjal uuesti. See ei muuda kunagi Claude aktiivset ega vaikekonfiguratsiooni ning on vaikimisi välja lülitatud."
       },
       "OMNIROUTE_DISABLE_LOCAL_HEALTHCHECK": {
         "description": "Keela kohaliku eksemplari seisundikontrolli lõpp-punkt."

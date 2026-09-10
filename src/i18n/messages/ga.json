@@ -2710,7 +2710,7 @@
     "ccOnboardingTitle": "settings.json le haghaidh aimsiú múnla geata",
     "ccOnboardingCopy": "Cóipeáil",
     "ccOnboardingCopied": "Cóipeáilte",
-    "ccOnboardingKeyPlaceholder": "<d'eochair API OmniRoute>",
+    "ccOnboardingKeyPlaceholder": "'<d''eochair API OmniRoute>'",
     "ccOnboardingWindowNote": "Glacann Claude Code le fuinneog chomhthéacs 200K d'aitheantóir múnla ar bith nach n-aithníonn sé. I gcás múnla a bhfuil fuinneog réadach dhifriúil aige, cuir CLAUDE_CODE_AUTO_COMPACT_WINDOW díreach faoi ionas nach spreagfar an t-uath-chomhdhlúthú ró-luath.",
     "failedSave": "Theip ar shábháil",
     "profileSyncTitle": "Uath-shioncronú próifíl CLI",
@@ -12968,7 +12968,7 @@
         "description": "Tar éis sioncrónaithe soláthraí-mhodail, athghin próifílí ~/.codex/*.config.toml ón gatalog beo. Ní athraíonn sé seo riamh cumraíocht Codex ghníomhach nó réamhshocraithe agus tá sé as de réir réamhshocraithe."
       },
       "OMNIROUTE_AUTO_SYNC_CLAUDE_PROFILES": {
-        "description": "Tar éis sioncrónaithe soláthraí-mhodail, athghin próifílí ~/.claude/profiles/<name>/settings.json ón gatalog beo. Ní athraíonn sé seo riamh cumraíocht Claude ghníomhach nó réamhshocraithe agus tá sé as de réir réamhshocraithe."
+        "description": "Tar éis sioncrónaithe soláthraí-mhodail, athghin próifílí ~/.claude/profiles/'<name>'/settings.json ón gatalog beo. Ní athraíonn sé seo riamh cumraíocht Claude ghníomhach nó réamhshocraithe agus tá sé as de réir réamhshocraithe."
       },
       "OMNIROUTE_DISABLE_LOCAL_HEALTHCHECK": {
         "description": "Díchumasaigh an deireadh sláinte údarásachais áitiúil."

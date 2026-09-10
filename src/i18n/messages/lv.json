@@ -2710,7 +2710,7 @@
     "ccOnboardingTitle": "settings.json vārtejas modeļu meklēšanai",
     "ccOnboardingCopy": "Kopēt",
     "ccOnboardingCopied": "Nokopēts",
-    "ccOnboardingKeyPlaceholder": "<jūsu OmniRoute API atslēga>",
+    "ccOnboardingKeyPlaceholder": "'<jūsu OmniRoute API atslēga>'",
     "ccOnboardingWindowNote": "Claude Code jebkuram neatpazītam modeļa ID pieņem 200K konteksta logu. Ja modelim ir cits reālais loga izmērs, pievienojiet tam tieši zemāk CLAUDE_CODE_AUTO_COMPACT_WINDOW, lai automātiskā saspiešana netiktu iedarbināta pārāk agri.",
     "failedSave": "Neizdevās saglabāt",
     "profileSyncTitle": "CLI profilu automātiska sinhronizācija",
@@ -12968,7 +12968,7 @@
         "description": "Pēc pakalpojumu sniedzēju un modeļu sinhronizācijas no tiešā kataloga no jauna ģenerēt ~/.codex/*.config.toml profilus. Tas nekad nemaina aktīvo vai noklusējuma Codex konfigurāciju un pēc noklusējuma ir izslēgts."
       },
       "OMNIROUTE_AUTO_SYNC_CLAUDE_PROFILES": {
-        "description": "Pēc pakalpojumu sniedzēju un modeļu sinhronizācijas no tiešā kataloga no jauna ģenerēt ~/.claude/profiles/<name>/settings.json profilus. Tas nekad nemaina aktīvo vai noklusējuma Claude konfigurāciju un pēc noklusējuma ir izslēgts."
+        "description": "Pēc pakalpojumu sniedzēju un modeļu sinhronizācijas no tiešā kataloga no jauna ģenerēt ~/.claude/profiles/'<name>'/settings.json profilus. Tas nekad nemaina aktīvo vai noklusējuma Claude konfigurāciju un pēc noklusējuma ir izslēgts."
       },
       "OMNIROUTE_DISABLE_LOCAL_HEALTHCHECK": {
         "description": "Atspējot lokālās instances veselības pārbaudes galapunktu."
