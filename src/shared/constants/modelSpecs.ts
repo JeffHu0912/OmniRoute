@@ -680,12 +680,16 @@ export const MODEL_SPECS: Record<string, ModelSpec> = {
   // ── MiniMax M3 (1M context, 512K max output) ─────────────────────
   // max output verified against MiniMax docs / OpenRouter / Artificial
   // Analysis (Nov 2025 launch): 1,048,576-token context, up to 512K output.
+  // Adaptive-thinking-only: MiniMax rejects manual budget_tokens /
+  // thinking.type:"enabled" with 400 (2013) — "invalid thinking.type:
+  // \"enabled\" (allowed: adaptive, disabled)" (#12132).
   "minimax-m3": {
     maxOutputTokens: 512000,
     contextWindow: 1048576,
     thinkingBudgetCap: 32768,
     supportsThinking: true,
     supportsTools: true,
+    adaptiveThinkingOnly: true,
     aliases: ["MiniMax-M3", "MiniMaxAI/MiniMax-M3"],
   },
 
