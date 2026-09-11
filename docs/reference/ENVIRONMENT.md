@@ -923,6 +923,7 @@ Embedding layer, vector store and reranking knobs for the persistent memory subs
 | `HF_HUB_ENDPOINT`               | `https://huggingface.co`   | Override Hugging Face Hub base URL used by `staticPotion.ts` (e.g. mirror endpoint for air-gapped setups). |
 | `MEMORY_VEC_TOP_K`              | `20`                       | Default top-K used by the `sqlite-vec` brute-force vector search inside `src/lib/memory/vectorStore.ts`.   |
 | `MEMORY_RRF_K`                  | `60`                       | Reciprocal Rank Fusion constant `k` for hybrid FTS5 + vector retrieval (sqlite-vec recipe).                |
+| `VECTOR_STORE_DISABLE_VEC`      | `false`                    | Test/diagnostic seam in `getVectorStore()` (`src/lib/memory/vectorStore.ts`): when `true`, forces the vector store to `null` (simulates a cloud/WASM environment without `sqlite-vec`), degrading memory retrieval to FTS5 keyword search. Leave unset in production. |
 | `NOTION_API_KEY`                | _(unset)_                  | API key for Notion backend (used by `genericBackend.ts` known backend preset).                                |
 | `NOTION_API_URL`                | `https://api.notion.com/v1`| Base URL for Notion API (can override for self-hosted Notion alternatives).                                   |
 | `OBSIDIAN_API_KEY`              | _(unset)_                  | API key for Obsidian Vault backend (used by `genericBackend.ts` known backend preset).                        |
