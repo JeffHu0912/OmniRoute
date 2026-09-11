@@ -5,6 +5,7 @@
  * secret — notably the Cursor CLI passthrough token (iss "omniroute", aud
  * "cursor-cli", no claim) — is NOT a session.
  */
+import "../_setup/isolateDataDir.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { SignJWT } from "jose";
