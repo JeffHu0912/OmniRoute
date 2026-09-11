@@ -7,14 +7,7 @@ import path from "node:path";
 const TEST_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "omniroute-model-catalog-"));
 process.env.DATA_DIR = TEST_DATA_DIR;
 process.env.API_KEY_SECRET = process.env.API_KEY_SECRET || "catalog-test-secret";
-// #12627 bounds a cold catalog build at 8s and, with no last-good response to fall
-// back on, surfaces `catalog_build_timeout` as an error body — no `data` array. That
-// bound is sized for a warm production process; a tsx-transpiled test runner building
-// the full 500+ model catalog from a fresh SQLite file on a loaded CI box crosses it
-// (10-13s observed), which turned the assertions below into a load-dependent flake.
-// Raise it here so these cases test catalog CONTENT; the timeout behavior itself is
-// covered by tests/unit/12627-catalog-inflight-timeout.test.ts.
-process.env.CATALOG_BUILD_TIMEOUT_MS = process.env.CATALOG_BUILD_TIMEOUT_MS || "120000";
+process.env.CATALOG_BUILD_TIMEOUT_MS = process.env.CATALOG_BUILD_TIMEOUT_MS || "120000"; // #12627 bound flakes a cold tsx build; 12627-catalog-inflight-timeout owns it
 
 const core = await import("../../src/lib/db/core.ts");
 const providersDb = await import("../../src/lib/db/providers.ts");
