@@ -1,5 +1,5 @@
 import { getDbInstance, rowToCamel, objToSnake } from "./core";
-import { deleteFile } from "./files";
+import { deleteFile, deleteFileOwnedBy } from "./files";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "../../../open-sse/utils/logger.ts";
 
@@ -439,6 +439,10 @@ export type DeleteCompletedBatchesScope = { apiKeyId: string } | { allTenants: t
  * sweep must never reach records the key does not own, so unowned batches are
  * only swept by `{ allTenants: true }`.
  *
+ * In key mode the file half is owner-scoped too: only files whose api_key_id is
+ * the caller's are soft-deleted; a referenced file another tenant owns (or an
+ * unowned one) is left intact and is not counted in deletedFiles.
+ *
  * The file soft-deletes, the checkpoint DELETE and the batches DELETE run in one
  * transaction, so a mid-sweep failure rolls everything back — no batch row is
  * left pointing at a file whose content was already nulled.
@@ -484,7 +488,11 @@ export function deleteCompletedBatches(scope: DeleteCompletedBatchesScope): {
     let deletedFiles = 0;
     for (const fid of fileIds) {
       try {
-        if (deleteFile(fid)) deletedFiles++;
+        // Key mode: only the key's OWN files. A batch may reference a file
+        // another tenant (or nobody) owns; a bulk destructive sweep must not
+        // reach it (SEC-C). Instance mode keeps the unconditional soft delete.
+        const removed = allTenants ? deleteFile(fid) : deleteFileOwnedBy(fid, apiKeyId as string);
+        if (removed) deletedFiles++;
       } catch (err) {
         log.warn("deleteCompletedBatches: file soft-delete failed", {
           fid,

@@ -189,6 +189,50 @@ describe("deleteCompletedBatches — ownership boundary (GHSA-wvxc-jp3v-5mg5)", 
     assert.strictEqual(getFile(unowned.file.id), null, "allTenants soft-deletes its file too");
   });
 
+  it("SEC-C: a key-scoped sweep never nulls a file another key owns, even when its own batch references it", () => {
+    const foreignFile = createFile({
+      bytes: 7,
+      filename: "foreign.jsonl",
+      purpose: "batch",
+      content: Buffer.from("foreign"),
+      apiKeyId: "key-other",
+    });
+    const unownedFile = createFile({
+      bytes: 7,
+      filename: "unowned.jsonl",
+      purpose: "batch",
+      content: Buffer.from("unowned"),
+      apiKeyId: null,
+    });
+    const own = seedCompletedBatch("key-secc", "secc-own");
+    const cross = createBatch({
+      endpoint: "/v1/chat/completions",
+      completionWindow: "24h",
+      inputFileId: foreignFile.id,
+      outputFileId: unownedFile.id,
+      status: "completed",
+      apiKeyId: "key-secc",
+    });
+
+    const result = deleteCompletedBatches({ apiKeyId: "key-secc" });
+
+    assert.strictEqual(result.deletedBatches, 2, "both of the key's completed batches are swept");
+    assert.strictEqual(result.deletedFiles, 1, "only the key's OWN file is soft-deleted");
+    assert.strictEqual(getBatch(own.batch.id), null);
+    assert.strictEqual(getBatch(cross.id), null);
+    assert.strictEqual(getFileContent(own.file.id), null, "own file content nulled");
+    assert.strictEqual(
+      getFileContent(foreignFile.id)?.toString(),
+      "foreign",
+      "another key's file intact"
+    );
+    assert.strictEqual(
+      getFileContent(unownedFile.id)?.toString(),
+      "unowned",
+      "unowned file intact"
+    );
+  });
+
   it("ATOMIC: a failure after the file soft-deletes rolls the file content back", () => {
     const db = getDbInstance();
     const own = seedCompletedBatch("key_atomic_wvxc", "wvxc-atomic");
