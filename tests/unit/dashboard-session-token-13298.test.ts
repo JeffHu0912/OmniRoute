@@ -86,3 +86,14 @@ test("an explicit secret argument wins over the env; a null secret means no sess
   assert.equal(await verifyDashboardSessionToken(tok), null);
   assert.equal(await verifyDashboardSessionToken(await sign({ authenticated: true }), null), null);
 });
+
+test("isDashboardSessionAuthenticated(): login token → true, Cursor CLI token → false (route-level)", async () => {
+  const { isDashboardSessionAuthenticated } = await import("../../src/shared/utils/apiAuth.ts");
+  const login = await sign({ authenticated: true });
+  const cursor = await sign({ name: "k" }, { iss: "omniroute", aud: "cursor-cli" });
+  const req = (cookie: string) =>
+    new Request("http://localhost/api/settings", { headers: { cookie: `auth_token=${cookie}` } });
+  assert.equal(await isDashboardSessionAuthenticated(req(login)), true);
+  assert.equal(await isDashboardSessionAuthenticated(req(cursor)), false);
+  assert.equal(await isDashboardSessionAuthenticated(req("garbage")), false);
+});
