@@ -218,7 +218,20 @@ async function toOutcome(
     body,
     retryAfterMs: details.retryAfterMs,
   });
-  const result = createErrorResult(restatement.status, message, restatement.retryAfterMs);
+  // Carry the upstream classification through too. #12867 dropped it when it replaced
+  // parseUpstreamError() with an inline JSON.parse, and the sibling leg
+  // (nonStreamingProviderLeg.ts) still lifts both fields. Gates that key on the PAIR —
+  // isAntigravityMissingProjectError (src/sse/handlers/chatPredicates.ts) — could never
+  // fire without them, so a config-class 422 degraded into a generic account cooldown.
+  // These stay internal: the client-visible body is still projected onto the bounded
+  // identifier vocabulary by buildErrorBody() (Hard Rule #12).
+  const result = createErrorResult(
+    restatement.status,
+    message,
+    restatement.retryAfterMs,
+    typeof details.errorCode === "string" ? details.errorCode : undefined,
+    typeof details.errorType === "string" ? details.errorType : undefined
+  );
   return {
     kind: "error",
     result: {
