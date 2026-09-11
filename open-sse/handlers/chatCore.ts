@@ -365,7 +365,6 @@ import {
 import {
   lockModel,
   lockModelIfPerModelQuota,
-  hasPerModelQuota,
   recordCoreOwnedAntigravityQuotaState,
   shouldDeferAntigravityQuotaStateToCaller,
 } from "../services/accountFallback.ts";

@@ -3378,11 +3378,6 @@
       "count": 2
     }
   },
-  "tests/unit/combo-test-route.test.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 10
-    }
-  },
   "tests/unit/combos-duplicate-resolution-audit.test.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
