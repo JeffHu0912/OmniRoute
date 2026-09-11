@@ -37,7 +37,9 @@ const EXPECTED: Record<InventoryKind, Record<string, number>> = {
     // v3.8.51 #11754: the second resolveImageRouteModel() call (a duplicate
     // of the retirement-check one hoisted before enforceApiKeyPolicy) was
     // removed as dead redundant code, 6->5.
-    "src/app/api/v1/images/edits/route.ts": 5,
+    // v3.8.51 #12653: combo edit targets now fall through to the next target, so
+    // the per-target attempt resolves credentials of its own, 5->6.
+    "src/app/api/v1/images/edits/route.ts": 6,
     "src/app/api/v1/images/generations/route.ts": 3,
     "src/app/api/v1/images/upscale/route.ts": 1,
     "src/app/api/v1/messages/count_tokens/route.ts": 1,
