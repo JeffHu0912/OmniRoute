@@ -1489,6 +1489,7 @@ async function handleSingleModelChat(
     model,
     sourceFormat,
     targetFormat,
+    customModelTargetFormat,
     extendedContext,
     apiFormat,
   } = resolved;
@@ -1940,7 +1941,11 @@ async function handleSingleModelChat(
               runtimeOptions.comboExecutionKey ?? runtimeOptions.comboStepId ?? null,
             extendedContext,
             modelApiFormat: apiFormat,
-            modelTargetFormat: targetFormat,
+            // Only a model's explicit DB override may cross this boundary as
+            // modelInfo.targetFormat. The effective targetFormat above was
+            // resolved without credentials; forwarding it would let a stale
+            // provider-id fallback override the credential-aware resolution.
+            modelTargetFormat: customModelTargetFormat,
             providerProfile,
             cachedSettings: runtimeOptions.cachedSettings,
             skipUpstreamRetry: runtimeOptions.skipUpstreamRetry ?? false,
