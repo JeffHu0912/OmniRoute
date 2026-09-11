@@ -2080,7 +2080,7 @@
   },
   "src/sse/handlers/chat.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 9
+      "count": 8
     }
   },
   "src/sse/handlers/chatHelpers.ts": {
