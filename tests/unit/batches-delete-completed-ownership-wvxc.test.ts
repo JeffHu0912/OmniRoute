@@ -37,7 +37,7 @@ process.env.DATA_DIR = TEST_DATA_DIR;
 process.env.APP_LOG_LEVEL = "warn";
 
 const { createFile, getFile, getFileContent } = await import("../../src/lib/db/files.ts");
-const { createBatch, getBatch, deleteCompletedBatches } =
+const { createBatch, getBatch, deleteCompletedBatches, INSTANCE_SWEEP_CHUNK } =
   await import("../../src/lib/db/batches.ts");
 const { getDbInstance, resetDbInstance } = await import("../../src/lib/db/core.ts");
 
@@ -295,5 +295,61 @@ describe("deleteCompletedBatches — ownership boundary (GHSA-wvxc-jp3v-5mg5)", 
       .find((line) => line.includes("deleteCompletedBatches: file soft-delete failed"));
     assert.ok(logged, "the failure is logged at warn level");
     assert.ok(logged!.includes(own.file.id), "the log line names the file id");
+  });
+  it("SEC-D: the instance sweep runs in chunks of INSTANCE_SWEEP_CHUNK and still deletes everything", () => {
+    const total = INSTANCE_SWEEP_CHUNK * 2 + 50; // 3 chunks: 200 + 200 + 50
+    const ids: string[] = [];
+    for (let i = 0; i < total; i++)
+      ids.push(seedCompletedBatch(i % 2 ? "key-chunk-a" : null, `chunk-${i}`).batch.id);
+    // `db.transaction(fn)` is called ONCE to build the unit; what must happen per
+    // chunk is the INVOCATION of the unit — count those.
+    const db = getDbInstance();
+    let runs = 0;
+    const origTx = db.transaction.bind(db);
+    const txSpy = mock.method(db, "transaction", (fn: (...a: unknown[]) => unknown) => {
+      const tx = origTx(fn);
+      return (...args: unknown[]) => {
+        runs++;
+        return tx(...args);
+      };
+    });
+
+    let result: ReturnType<typeof deleteCompletedBatches>;
+    try {
+      result = deleteCompletedBatches({ allTenants: true });
+    } finally {
+      txSpy.mock.restore();
+    }
+
+    assert.strictEqual(result.deletedBatches, total);
+    assert.strictEqual(result.deletedFiles, total);
+    assert.strictEqual(runs, 3, "one transaction per chunk (200 + 200 + 50)");
+    for (const id of ids) assert.strictEqual(getBatch(id), null);
+  });
+
+  it("SEC-D: a failure in chunk 2 keeps chunk 1 done and rolls chunk 2 back entirely", () => {
+    const first = Array.from({ length: INSTANCE_SWEEP_CHUNK }, (_, i) =>
+      seedCompletedBatch(null, `c1-${i}`)
+    );
+    const second = Array.from({ length: 10 }, (_, i) => seedCompletedBatch(null, `c2-${i}`));
+    const poison = second[5].batch.id;
+    const db = getDbInstance();
+    db.exec(
+      `CREATE TRIGGER wvxc_chunk_poison BEFORE DELETE ON batches WHEN OLD.id = '${poison}' BEGIN SELECT RAISE(ABORT, 'poison'); END`
+    );
+    try {
+      assert.throws(() => deleteCompletedBatches({ allTenants: true }), /poison/);
+    } finally {
+      db.exec("DROP TRIGGER IF EXISTS wvxc_chunk_poison");
+    }
+    for (const s of first) assert.strictEqual(getBatch(s.batch.id), null, "chunk 1 committed");
+    for (const s of second) {
+      assert.ok(getBatch(s.batch.id), "chunk 2 rolled back as a unit");
+      assert.strictEqual(
+        getFileContent(s.file.id)?.toString(),
+        s.file.filename.replace(".jsonl", ""),
+        "chunk 2 file content restored"
+      );
+    }
   });
 });

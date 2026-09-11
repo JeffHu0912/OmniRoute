@@ -443,10 +443,23 @@ export type DeleteCompletedBatchesScope = { apiKeyId: string } | { allTenants: t
  * the caller's are soft-deleted; a referenced file another tenant owns (or an
  * unowned one) is left intact and is not counted in deletedFiles.
  *
- * The file soft-deletes, the checkpoint DELETE and the batches DELETE run in one
- * transaction, so a mid-sweep failure rolls everything back — no batch row is
- * left pointing at a file whose content was already nulled.
+ * The file soft-deletes, the checkpoint DELETE and the batches DELETE for a set
+ * of batch ids run in one transaction, so a mid-sweep failure rolls that set back
+ * — no batch row is left pointing at a file whose content was already nulled.
+ * Key mode runs that unit once over every completed batch the key owns.
+ * Instance mode (`allTenants`) runs it per chunk of `INSTANCE_SWEEP_CHUNK` ids
+ * (SEC-D): a large sweep never holds one write lock over the whole table, each
+ * chunk stays atomic, and a failure inside chunk N leaves chunks < N committed,
+ * chunk N fully rolled back, and rethrows. The returned totals sum the chunks.
+ *
+ * The ids of a unit are bound as `IN (?, …)` placeholders. A chunk is far below
+ * SQLite's default SQLITE_MAX_VARIABLE_NUMBER (32766 since 3.32); the key-mode
+ * list is bounded by that key's completed batches — should a single key ever
+ * own more than ~32k completed batches, chunk key mode the same way.
  */
+/** Instance-wide sweeps commit in chunks of this many batches (SEC-D). */
+export const INSTANCE_SWEEP_CHUNK = 200;
+
 export function deleteCompletedBatches(scope: DeleteCompletedBatchesScope): {
   deletedBatches: number;
   deletedFiles: number;
@@ -463,16 +476,18 @@ export function deleteCompletedBatches(scope: DeleteCompletedBatchesScope): {
 
   const db = getDbInstance();
 
-  const ownershipClause = allTenants ? "" : " AND api_key_id = ?";
-  const ownershipArgs = allTenants ? [] : [apiKeyId];
-
-  const sweep = db.transaction(() => {
-    // Collect unique file IDs from the completed batches in scope
+  // One consistent unit: file soft-deletes → checkpoints → batch rows for a
+  // given set of batch ids. Key mode runs it once over every completed batch
+  // the key owns; instance mode runs it per chunk so a large sweep never holds
+  // one write-lock for the whole table (SEC-D) while each chunk stays atomic.
+  const sweepIds = db.transaction((ids: string[]) => {
+    if (ids.length === 0) return { deletedBatches: 0, deletedFiles: 0 };
+    const marks = ids.map(() => "?").join(",");
     const rows = db
       .prepare(
-        `SELECT input_file_id, output_file_id, error_file_id FROM batches WHERE status = 'completed'${ownershipClause}`
+        `SELECT input_file_id, output_file_id, error_file_id FROM batches WHERE id IN (${marks})`
       )
-      .all(...ownershipArgs) as Array<{
+      .all(...ids) as Array<{
       input_file_id: string | null;
       output_file_id: string | null;
       error_file_id: string | null;
@@ -501,15 +516,32 @@ export function deleteCompletedBatches(scope: DeleteCompletedBatchesScope): {
       }
     }
 
-    db.prepare(
-      `DELETE FROM batch_item_checkpoints WHERE batch_id IN (SELECT id FROM batches WHERE status = 'completed'${ownershipClause})`
-    ).run(...ownershipArgs);
-
-    const result = db
-      .prepare(`DELETE FROM batches WHERE status = 'completed'${ownershipClause}`)
-      .run(...ownershipArgs);
+    db.prepare(`DELETE FROM batch_item_checkpoints WHERE batch_id IN (${marks})`).run(...ids);
+    const result = db.prepare(`DELETE FROM batches WHERE id IN (${marks})`).run(...ids);
     return { deletedBatches: result.changes, deletedFiles };
   });
 
-  return sweep();
+  if (!allTenants) {
+    const ids = (
+      db
+        .prepare(
+          "SELECT id FROM batches WHERE status = 'completed' AND api_key_id = ? ORDER BY rowid"
+        )
+        .all(apiKeyId) as Array<{ id: string }>
+    ).map((r) => r.id);
+    return sweepIds(ids);
+  }
+
+  const totals = { deletedBatches: 0, deletedFiles: 0 };
+  const nextChunk = db.prepare(
+    "SELECT id FROM batches WHERE status = 'completed' ORDER BY rowid LIMIT ?"
+  );
+  for (;;) {
+    const ids = (nextChunk.all(INSTANCE_SWEEP_CHUNK) as Array<{ id: string }>).map((r) => r.id);
+    if (ids.length === 0) break;
+    const part = sweepIds(ids);
+    totals.deletedBatches += part.deletedBatches;
+    totals.deletedFiles += part.deletedFiles;
+  }
+  return totals;
 }
