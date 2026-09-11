@@ -334,6 +334,7 @@ describe("deleteCompletedBatches — ownership boundary (GHSA-wvxc-jp3v-5mg5)", 
     const second = Array.from({ length: 10 }, (_, i) => seedCompletedBatch(null, `c2-${i}`));
     const poison = second[5].batch.id;
     const db = getDbInstance();
+    // DDL cannot take bound parameters in SQLite; the value is createBatch's generated id.
     db.exec(
       `CREATE TRIGGER wvxc_chunk_poison BEFORE DELETE ON batches WHEN OLD.id = '${poison}' BEGIN SELECT RAISE(ABORT, 'poison'); END`
     );
@@ -349,6 +350,57 @@ describe("deleteCompletedBatches — ownership boundary (GHSA-wvxc-jp3v-5mg5)", 
         getFileContent(s.file.id)?.toString(),
         s.file.filename.replace(".jsonl", ""),
         "chunk 2 file content restored"
+      );
+    }
+  });
+
+  it("SEC-D: a key with more than INSTANCE_SWEEP_CHUNK completed batches is swept in one call, atomically", () => {
+    const total = INSTANCE_SWEEP_CHUNK + 1;
+    const own = Array.from({ length: total }, (_, i) => seedCompletedBatch("key-big", `big-${i}`));
+    const other = seedCompletedBatch("key-small", "big-other");
+    const db = getDbInstance();
+    let runs = 0;
+    const origTx = db.transaction.bind(db);
+    const txSpy = mock.method(db, "transaction", (fn: (...a: unknown[]) => unknown) => {
+      const tx = origTx(fn);
+      return (...args: unknown[]) => {
+        runs++;
+        return tx(...args);
+      };
+    });
+    let result: ReturnType<typeof deleteCompletedBatches>;
+    try {
+      result = deleteCompletedBatches({ apiKeyId: "key-big" });
+    } finally {
+      txSpy.mock.restore();
+    }
+    assert.strictEqual(result.deletedBatches, total);
+    assert.strictEqual(result.deletedFiles, total);
+    assert.ok(runs >= 3, `outer transaction + 2 chunk units expected, got ${runs}`);
+    for (const s of own) assert.strictEqual(getBatch(s.batch.id), null);
+    assert.ok(getBatch(other.batch.id), "another key's batch survives");
+  });
+
+  it("SEC-D: a failure in the key sweep's second chunk rolls the WHOLE key sweep back (single atomic transaction)", () => {
+    const own = Array.from({ length: INSTANCE_SWEEP_CHUNK + 5 }, (_, i) =>
+      seedCompletedBatch("key-atomic", `atomic-${i}`)
+    );
+    const poison = own[INSTANCE_SWEEP_CHUNK + 2].batch.id;
+    const db = getDbInstance();
+    // DDL cannot take bound parameters in SQLite; the value is createBatch's generated id.
+    db.exec(
+      `CREATE TRIGGER wvxc_key_poison BEFORE DELETE ON batches WHEN OLD.id = '${poison}' BEGIN SELECT RAISE(ABORT, 'key poison'); END`
+    );
+    try {
+      assert.throws(() => deleteCompletedBatches({ apiKeyId: "key-atomic" }), /key poison/);
+    } finally {
+      db.exec("DROP TRIGGER IF EXISTS wvxc_key_poison");
+    }
+    for (const s of own) {
+      assert.ok(getBatch(s.batch.id), "key sweep is all-or-nothing: chunk 1 rolled back too");
+      assert.strictEqual(
+        getFileContent(s.file.id)?.toString(),
+        s.file.filename.replace(".jsonl", "")
       );
     }
   });

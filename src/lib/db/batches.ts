@@ -448,17 +448,24 @@ export const INSTANCE_SWEEP_CHUNK = 200;
  *
  * The file soft-deletes, the checkpoint DELETE and the batches DELETE for a set
  * of batch ids run in one transaction, so a mid-sweep failure rolls that set back
- * — no batch row is left pointing at a file whose content was already nulled.
- * Key mode runs that unit once over every completed batch the key owns.
- * Instance mode (`allTenants`) runs it per chunk of `INSTANCE_SWEEP_CHUNK` ids
- * (SEC-D): a large sweep never holds one write lock over the whole table, each
- * chunk stays atomic, and a failure inside chunk N leaves chunks < N committed,
- * chunk N fully rolled back, and rethrows. The returned totals sum the chunks.
+ * — within a chunk, no batch row is left pointing at a file whose content was
+ * already nulled. Both modes walk the key's/instance's completed batches in
+ * chunks of `INSTANCE_SWEEP_CHUNK` ids and run that unit once per chunk.
+ * Key mode wraps the whole chunk loop in ONE outer transaction (a nested
+ * transaction call is a savepoint on every adapter), so the key sweep stays
+ * all-or-nothing: a failure in any chunk rolls every earlier chunk back too.
+ * Instance mode (`allTenants`) commits per chunk (SEC-D): a large sweep never
+ * holds one write lock over the whole table, each chunk stays atomic, and a
+ * failure inside chunk N leaves chunks < N committed, chunk N fully rolled
+ * back, and rethrows. Inherent to per-chunk commits: a file shared by batches
+ * in two different chunks can be nulled by chunk 1 before chunk 2 fails; the
+ * surviving batch row is swept by the next run. The returned totals sum the
+ * chunks.
  *
- * The ids of a unit are bound as `IN (?, …)` placeholders. A chunk is far below
- * SQLite's default SQLITE_MAX_VARIABLE_NUMBER (32766 since 3.32); the key-mode
- * list is bounded by that key's completed batches — should a single key ever
- * own more than ~32k completed batches, chunk key mode the same way.
+ * The ids of a unit are bound as `IN (?, …)` placeholders. No statement ever
+ * binds more than `INSTANCE_SWEEP_CHUNK` ids in either mode, so a tenant with
+ * tens of thousands of completed batches never hits SQLite's default
+ * SQLITE_MAX_VARIABLE_NUMBER (32766 since 3.32).
  */
 export function deleteCompletedBatches(scope: DeleteCompletedBatchesScope): {
   deletedBatches: number;
@@ -467,7 +474,7 @@ export function deleteCompletedBatches(scope: DeleteCompletedBatchesScope): {
   const scopeObj = scope && typeof scope === "object" ? scope : {};
   const allTenants = "allTenants" in scopeObj && scopeObj.allTenants === true;
   const apiKeyId = "apiKeyId" in scopeObj ? scopeObj.apiKeyId : undefined;
-  if (!allTenants && !apiKeyId) {
+  if (!allTenants && (typeof apiKeyId !== "string" || apiKeyId.trim() === "")) {
     throw new Error("deleteCompletedBatches: apiKeyId required unless allTenants");
   }
   if (allTenants && apiKeyId) {
@@ -477,9 +484,10 @@ export function deleteCompletedBatches(scope: DeleteCompletedBatchesScope): {
   const db = getDbInstance();
 
   // One consistent unit: file soft-deletes → checkpoints → batch rows for a
-  // given set of batch ids. Key mode runs it once over every completed batch
-  // the key owns; instance mode runs it per chunk so a large sweep never holds
-  // one write-lock for the whole table (SEC-D) while each chunk stays atomic.
+  // given set of batch ids. Both modes run it per chunk of INSTANCE_SWEEP_CHUNK
+  // ids; key mode nests the chunks in one outer transaction, instance mode
+  // commits each chunk so a large sweep never holds one write-lock for the
+  // whole table (SEC-D) while each chunk stays atomic.
   const sweepIds = db.transaction((ids: string[]) => {
     if (ids.length === 0) return { deletedBatches: 0, deletedFiles: 0 };
     const marks = ids.map(() => "?").join(",");
@@ -522,14 +530,28 @@ export function deleteCompletedBatches(scope: DeleteCompletedBatchesScope): {
   });
 
   if (!allTenants) {
-    const ids = (
-      db
-        .prepare(
-          "SELECT id FROM batches WHERE status = 'completed' AND api_key_id = ? ORDER BY rowid"
-        )
-        .all(apiKeyId) as Array<{ id: string }>
-    ).map((r) => r.id);
-    return sweepIds(ids);
+    // One outer transaction so the key sweep stays all-or-nothing; inside it,
+    // the same 200-id unit as instance mode (nested transaction calls become
+    // savepoints on every adapter), so no statement ever binds more than
+    // INSTANCE_SWEEP_CHUNK ids — a tenant with tens of thousands of completed
+    // batches must not hit SQLite's 32766 bound-parameter ceiling.
+    const keyChunk = db.prepare(
+      "SELECT id FROM batches WHERE status = 'completed' AND api_key_id = ? ORDER BY rowid LIMIT ?"
+    );
+    const sweepKey = db.transaction(() => {
+      const totals = { deletedBatches: 0, deletedFiles: 0 };
+      for (;;) {
+        const ids = (keyChunk.all(apiKeyId, INSTANCE_SWEEP_CHUNK) as Array<{ id: string }>).map(
+          (r) => r.id
+        );
+        if (ids.length === 0) break;
+        const part = sweepIds(ids);
+        totals.deletedBatches += part.deletedBatches;
+        totals.deletedFiles += part.deletedFiles;
+      }
+      return totals;
+    });
+    return sweepKey();
   }
 
   const totals = { deletedBatches: 0, deletedFiles: 0 };
