@@ -421,6 +421,9 @@ export function deleteBatch(id: string): boolean {
  */
 export type DeleteCompletedBatchesScope = { apiKeyId: string } | { allTenants: true };
 
+/** Instance-wide sweeps commit in chunks of this many batches (SEC-D). */
+export const INSTANCE_SWEEP_CHUNK = 200;
+
 /**
  * Delete completed batches and the files they reference.
  *
@@ -457,9 +460,6 @@ export type DeleteCompletedBatchesScope = { apiKeyId: string } | { allTenants: t
  * list is bounded by that key's completed batches — should a single key ever
  * own more than ~32k completed batches, chunk key mode the same way.
  */
-/** Instance-wide sweeps commit in chunks of this many batches (SEC-D). */
-export const INSTANCE_SWEEP_CHUNK = 200;
-
 export function deleteCompletedBatches(scope: DeleteCompletedBatchesScope): {
   deletedBatches: number;
   deletedFiles: number;
