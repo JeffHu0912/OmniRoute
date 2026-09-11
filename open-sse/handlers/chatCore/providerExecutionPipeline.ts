@@ -49,6 +49,8 @@ export type ProviderExecutionOutcome =
       providerUsage: ProviderLegUsage | null;
       model: string;
       connectionId: string;
+      /** Parsed upstream error body, for callers that persist failure state. */
+      upstreamBody?: unknown;
     };
 
 export interface PipelineTargetContext {
@@ -241,10 +243,14 @@ async function toOutcome(
       error: result.error,
       errorCode: result.errorCode,
       errorType: result.errorType,
+      // The un-sanitized upstream wording — provider-error classification
+      // (quota vs rate-limit vs ban) reads this, not the client-facing text.
+      rawMessage: message,
     },
     providerUsage: null,
     model,
     connectionId,
+    upstreamBody: body,
   };
 }
 
