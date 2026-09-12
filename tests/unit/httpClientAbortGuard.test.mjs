@@ -103,7 +103,10 @@ test("shouldSwallowUncaught absorbs the real 'aborted' uncaughtException signatu
   assert.equal(shouldSwallowUncaught(abortErr, "uncaughtException"), true);
   assert.equal(shouldSwallowUncaught(abortErr, undefined), true);
   assert.equal(
-    shouldSwallowUncaught(Object.assign(new Error("ECONNRESET"), { code: "ECONNRESET" }), "uncaughtException"),
+    shouldSwallowUncaught(
+      Object.assign(new Error("ECONNRESET"), { code: "ECONNRESET" }),
+      "uncaughtException"
+    ),
     true
   );
 });
@@ -188,7 +191,11 @@ test("installProcessCrashGuard still crashes on genuine errors (no over-swallowi
     process.emit("uncaughtException", new Error("genuine failure"), "uncaughtException");
     console.log("SHOULD_NOT_REACH");
   `;
-  const { status, stdout, stderr: _stderr } = await new Promise((resolve, reject) => {
+  const {
+    status,
+    stdout,
+    stderr: _stderr,
+  } = await new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ["--input-type=module", "-e", script, guardPath], {
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -201,4 +208,81 @@ test("installProcessCrashGuard still crashes on genuine errors (no over-swallowi
   });
   assert.notEqual(status, 0, "genuine errors must keep crash semantics");
   assert.doesNotMatch(stdout, /SHOULD_NOT_REACH/);
+});
+
+// Production crash (2026-09-09 x240, 2026-09-12 x2 — every restart dropped the
+// in-flight requests of a live combo):
+//   ⨯ uncaughtException: Error [AbortError]: combo-per-model-timeout
+//     at ...handleDisconnect (open-sse combo per-target timer)
+// Both strings are OmniRoute's OWN combo-teardown sentinels, raised as
+// `new Error(...)` abort reasons by
+// open-sse/services/combo/targetTimeoutRunner.ts via comboAbortReasons.ts:
+// the per-target timeout and the hedged-sibling cancellation. They are
+// self-inflicted and already handled by the dispatcher, so they must never take
+// the process down — while a genuine error that merely quotes the sentinel text
+// must keep crashing.
+test("isClientAbortError absorbs OmniRoute's own combo-teardown abort reasons (#combo-timeout-crash)", () => {
+  for (const reason of ["combo-per-model-timeout", "hedge-cancelled"]) {
+    const asAbortError = Object.assign(new Error(reason), { name: "AbortError" });
+    const asPlainError = new Error(reason);
+    assert.equal(isClientAbortError(asAbortError), true, `${reason} (AbortError) must be absorbed`);
+    assert.equal(
+      isClientAbortError(asPlainError),
+      true,
+      `${reason} (plain Error) must be absorbed`
+    );
+    assert.equal(
+      shouldSwallowUncaught(asAbortError, "uncaughtException"),
+      true,
+      `${reason} must not kill the process`
+    );
+    assert.equal(
+      shouldSwallowUncaught(asPlainError, "unhandledRejection"),
+      true,
+      `${reason} rejection must not kill the process`
+    );
+  }
+  // Genuine errors that merely quote the sentinel must still crash.
+  const typo = new TypeError("combo-per-model-timeout is not a function");
+  assert.equal(isClientAbortError(typo), false);
+  const partial = Object.assign(new Error("combo-per-model-timeout-inner"), {
+    name: "AbortError",
+  });
+  assert.equal(isClientAbortError(partial), false, "only the exact sentinel is benign");
+});
+
+test("installProcessCrashGuard survives the real combo-timeout crash signature (no restart)", async () => {
+  const guardPath = fileURLToPath(
+    new URL("../../src/shared/utils/httpClientAbortGuard.mjs", import.meta.url)
+  );
+  const script = `
+    const { installProcessCrashGuard } = await import(process.argv[1]);
+    installProcessCrashGuard(); // production call site passes NO logger
+    // Exact shape from the container log (2026-09-12T15:36:41Z).
+    process.emit(
+      "uncaughtException",
+      Object.assign(new Error("combo-per-model-timeout"), { name: "AbortError" }),
+      "uncaughtException"
+    );
+    process.emit(
+      "unhandledRejection",
+      Object.assign(new Error("hedge-cancelled"), { name: "AbortError" }),
+      Promise.resolve()
+    );
+    console.log("ALIVE");
+    process.exit(0);
+  `;
+  const { status, stdout, stderr } = await new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ["--input-type=module", "-e", script, guardPath], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let out = "";
+    let err = "";
+    child.stdout.on("data", (d) => (out += d));
+    child.stderr.on("data", (d) => (err += d));
+    child.on("close", (status) => resolve({ status, stdout: out, stderr: err }));
+    child.on("error", reject);
+  });
+  assert.equal(status, 0, `combo-teardown aborts must not kill the process; stderr: ${stderr}`);
+  assert.match(stdout, /ALIVE/);
 });

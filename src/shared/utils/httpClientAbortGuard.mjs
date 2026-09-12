@@ -33,6 +33,22 @@
  */
 
 /**
+ * OmniRoute's own combo-teardown abort reasons
+ * (`open-sse/services/combo/comboAbortReasons.ts`). `targetTimeoutRunner` aborts
+ * a stalled target with `new Error(COMBO_PER_MODEL_TIMEOUT_REASON)` and cancels
+ * a hedged sibling with `new Error(COMBO_HEDGE_CANCELLED_REASON)`; the reason
+ * rides the request AbortSignal into a socket/emitter teardown and, with no
+ * listener left, surfaces as a process-level `uncaughtException` named
+ * `AbortError`.
+ *
+ * Unlike a client disconnect these are self-inflicted and already handled by the
+ * combo dispatcher, so they must never take the server down: the 2026-09-09
+ * incident exited the process 240 times and 2026-09-12 twice — each restart
+ * dropped every in-flight request of a live combo.
+ */
+const COMBO_TEARDOWN_ABORT_REASONS = new Set(["combo-per-model-timeout", "hedge-cancelled"]);
+
+/**
  * @param {unknown} err
  * @returns {boolean} true when `err` represents a client closing the
  *   connection rather than a server-side fault.
@@ -49,6 +65,9 @@ export function isClientAbortError(err) {
   // `Error: aborted` — an emitter-left 'error' event on any of these used to
   // kill the process (#fix-dev-server-aborted).
   if (e.name === "AbortError" && /abort/i.test(String(e.message))) return true;
+  // OmniRoute's own combo-teardown sentinels (exact match only — a genuine error
+  // quoting the text keeps its crash semantics).
+  if (COMBO_TEARDOWN_ABORT_REASONS.has(String(e.message))) return true;
   switch (e.code) {
     case "ERR_STREAM_PREMATURE_CLOSE":
     case "ECONNRESET":
